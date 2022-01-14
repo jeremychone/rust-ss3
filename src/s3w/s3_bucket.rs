@@ -1,40 +1,90 @@
-use aws_sdk_s3::model::Object;
+use aws_sdk_s3::model::{CommonPrefix, Object};
 use aws_sdk_s3::Client;
 use regex::Regex;
 
+use crate::spath::S3Url;
 use crate::Error;
 
 // region:    S3Object
-pub struct S3Object {
+pub enum SItemType {
+	Object,
+	Prefix,
+}
+
+pub struct SItem {
+	pub typ: SItemType,
 	pub key: String,
 }
 
-impl S3Object {
-	fn from_object(obj: &Object) -> S3Object {
+// builders
+impl SItem {
+	fn from_object(obj: &Object) -> SItem {
 		let key = obj.key().unwrap_or_default().to_string();
-		let size = obj.size;
-		S3Object { key }
+		SItem {
+			key,
+			typ: SItemType::Object,
+		}
+	}
+
+	fn from_prefix(prefix: &CommonPrefix) -> SItem {
+		let key = prefix.prefix().unwrap_or_default().to_string();
+		SItem {
+			key,
+			typ: SItemType::Prefix,
+		}
 	}
 }
 // endregion: S3Object
 
-pub struct S3Bucket {
+// region:    ListOptions
+pub struct ListOptions {
+	recursive: bool,
+	prefix: String,
+}
+
+impl ListOptions {
+	pub fn new(recursive: bool, prefix: &str) -> ListOptions {
+		ListOptions {
+			recursive,
+			prefix: prefix.to_string(),
+		}
+	}
+}
+// endregion: ListOptions
+
+// region:    S3Bucket
+pub struct SBucket {
 	client: Client,
 	name: String,
 }
 
-impl S3Bucket {
-	pub fn from_client_and_name(client: Client, name: String) -> S3Bucket {
-		S3Bucket { client, name }
+impl SBucket {
+	pub fn from_client_and_name(client: Client, name: String) -> SBucket {
+		SBucket { client, name }
 	}
 }
 
-impl S3Bucket {
-	pub async fn list(&self) -> Result<Vec<S3Object>, Error> {
-		let resp = self.client.list_objects_v2().bucket(&self.name).send().await?;
+impl SBucket {
+	pub async fn list(&self, options: &ListOptions) -> Result<Vec<SItem>, Error> {
+		let mut builder = self.client.list_objects_v2().prefix(&options.prefix).bucket(&self.name);
 
-		let data: Vec<S3Object> = resp.contents().unwrap_or_default().into_iter().map(S3Object::from_object).collect();
+		if !options.recursive {
+			builder = builder.delimiter("/");
+		}
+
+		let resp = builder.send().await?;
+		let mut data: Vec<SItem> = resp
+			.common_prefixes()
+			.unwrap_or_default()
+			.into_iter()
+			.map(SItem::from_prefix)
+			.collect();
+		let objects: Vec<SItem> = resp.contents().unwrap_or_default().into_iter().map(SItem::from_object).collect();
+
+		data.extend(objects);
 
 		Ok(data)
 	}
 }
+
+// endregion: S3Bucket

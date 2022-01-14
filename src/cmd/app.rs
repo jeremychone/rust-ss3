@@ -1,6 +1,8 @@
 use clap::{crate_version, App, Arg};
 
-pub const ARG_URL_1: &str = "url_1";
+pub const ARG_RECURSIVE: &str = "recursive";
+pub const ARG_PATH_1: &str = "path_1";
+pub const ARG_PATH_2: &str = "path_2";
 pub const ARG_PROFILE: &str = "profile";
 
 pub fn cmd_app() -> App<'static> {
@@ -8,18 +10,43 @@ pub fn cmd_app() -> App<'static> {
 		.version(&crate_version!()[..])
 		.arg(arg_profile())
 		.subcommand(sub_ls())
+		.subcommand(sub_cp())
 }
 
 fn sub_ls() -> App<'static> {
-	App::new("ls").arg(arg_profile()).arg(arg_url_1())
+	App::new("ls")
+		.about("List from s3 url")
+		.arg(arg_profile())
+		.arg(arg_path_1())
+		.arg(arg_recursive())
+}
+
+fn sub_cp() -> App<'static> {
+	App::new("cp")
+		.about("Copy from s3 url / file path to s3 url / file path")
+		.arg(arg_profile())
+		.arg(arg_path_1())
+		.arg(arg_path_2())
+		.arg(arg_recursive())
 }
 
 // region:    Common Args
-fn arg_url_1() -> Arg<'static> {
-	Arg::new(ARG_URL_1).required(true)
+fn arg_path_1() -> Arg<'static> {
+	Arg::new(ARG_PATH_1).required(true).help("The first path to apply the action from.")
+}
+
+fn arg_path_2() -> Arg<'static> {
+	Arg::new(ARG_PATH_2).required(true).help("The destination path.")
+}
+
+fn arg_recursive() -> Arg<'static> {
+	Arg::new(ARG_RECURSIVE).short('r').help("Specify to list all keys recursively")
 }
 
 fn arg_profile() -> Arg<'static> {
-	Arg::new(ARG_PROFILE).short('p').takes_value(true).help("The profile to be used")
+	Arg::new(ARG_PROFILE)
+		.short('p')
+		.takes_value(true)
+		.help("The profile to use if no bucket environment credentials.")
 }
 // endregion: Common Args

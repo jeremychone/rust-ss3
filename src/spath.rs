@@ -46,7 +46,14 @@ impl S3Url {
 			if caps.len() == 3 {
 				return Ok(S3Url {
 					bucket: caps[1].to_string(),
-					key: caps[2].to_string(),
+					key: {
+						let prefix = caps[2];
+						if prefix.starts_with("/") {
+							prefix[1..].to_string()
+						} else {
+							prefix.to_string()
+						}
+					},
 				});
 			}
 		}
