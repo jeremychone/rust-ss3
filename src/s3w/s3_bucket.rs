@@ -1,9 +1,6 @@
+use crate::Error;
 use aws_sdk_s3::model::{CommonPrefix, Object};
 use aws_sdk_s3::Client;
-use regex::Regex;
-
-use crate::spath::S3Url;
-use crate::Error;
 
 // region:    S3Object
 pub enum SItemType {

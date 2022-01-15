@@ -1,9 +1,12 @@
 use crate::Error;
 use aws_config::profile::Profile;
-use aws_sdk_s3::{Client, Credentials, Region};
+use aws_sdk_s3::config::Builder;
+use aws_sdk_s3::{Client, Credentials, Endpoint, Region};
 use aws_types::credentials::SharedCredentialsProvider;
 use aws_types::os_shim_internal::{Env, Fs};
+use http::Uri;
 use std::env;
+use std::str::FromStr;
 
 use super::s3_bucket::SBucket;
 
@@ -16,13 +19,15 @@ const AWS_DEFAULT_REGION: &str = "AWS_DEFAULT_REGION";
 struct AwsCred {
 	key_id: String,
 	key_secret: String,
-	region: String,
+	region: Option<String>,
+	endpoint: Option<String>,
 }
 
 enum CredKey {
 	Id,
 	Secret,
 	Region,
+	Endpoint,
 }
 
 impl CredKey {
@@ -31,6 +36,7 @@ impl CredKey {
 			CredKey::Id => "KEY_ID",
 			CredKey::Secret => "KEY_SECRET",
 			CredKey::Region => "REGION",
+			CredKey::Endpoint => "ENDPOINT",
 		}
 	}
 }
@@ -58,25 +64,39 @@ pub async fn get_sbucket(profile: Option<&str>, bucket: &str) -> Result<SBucket,
 
 async fn new_s3_client(profile: Option<&str>, bucket: &str) -> Result<Client, Error> {
 	let cred = load_aws_cred(profile, bucket).await?;
-	let client = client_from_cred(cred);
+	let client = client_from_cred(cred)?;
 	Ok(client)
 }
 
-fn client_from_cred(aws_cred: AwsCred) -> Client {
+fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 	let AwsCred {
 		key_id,
 		key_secret,
 		region,
+		endpoint,
 	} = aws_cred;
 
 	let cred = Credentials::new(key_id, key_secret, None, None, "loaded-from-config-or-env");
 
-	let shared_config = aws_config::Config::builder()
-		.region(Region::new(region))
-		.credentials_provider(SharedCredentialsProvider::new(cred))
-		.build();
+	if let (None, None) = (&region, &endpoint) {
+		return Err(Error::MissingConfigMustHaveEndpointOrRegion);
+	}
 
-	Client::new(&shared_config)
+	let mut config = Builder::new().credentials_provider(SharedCredentialsProvider::new(cred));
+
+	if let Some(endpoint) = endpoint {
+		config = config.endpoint_resolver(Endpoint::immutable(Uri::from_str(&endpoint).unwrap()));
+		// WORKAROUND - Right now the aws-sdk throw a NoRegion on .send if not region even if we have a endpoint
+		config = config.region(Region::new("endpoint-region"));
+	}
+
+	if let Some(region) = region {
+		config = config.region(Region::new(region));
+	}
+
+	let config = config.build();
+	let client = Client::from_conf(config);
+	Ok(client)
 }
 
 /// Load the AwsCred from
@@ -112,7 +132,7 @@ async fn load_aws_cred(profile: Option<&str>, bucket: &str) -> Result<AwsCred, E
 		cred_result = load_aws_cred_from_default_aws_env().await;
 	}
 
-	cred_result.map_err(|e| Error::NoCredentialsFoundForBucket(bucket.to_string()))
+	cred_result.map_err(|_| Error::NoCredentialsFoundForBucket(bucket.to_string()))
 }
 
 /// Attempt to create AwsCred from SS3 BUCKET environment variables
@@ -122,12 +142,14 @@ async fn load_aws_cred(profile: Option<&str>, bucket: &str) -> Result<AwsCred, E
 async fn load_aws_cred_from_ss3_bucket_env(bucket: &str) -> Result<AwsCred, Error> {
 	let key_id = get_env(&get_env_name(EnvType::Bucket, CredKey::Id, bucket))?;
 	let key_secret = get_env(&get_env_name(EnvType::Bucket, CredKey::Secret, bucket))?;
-	let region = get_env(&get_env_name(EnvType::Bucket, CredKey::Region, bucket))?;
+	let region = get_env(&get_env_name(EnvType::Bucket, CredKey::Region, bucket)).ok();
+	let endpoint = get_env(&get_env_name(EnvType::Bucket, CredKey::Endpoint, bucket)).ok();
 
 	Ok(AwsCred {
 		key_id,
 		key_secret,
 		region,
+		endpoint,
 	})
 }
 
@@ -138,12 +160,14 @@ async fn load_aws_cred_from_ss3_bucket_env(bucket: &str) -> Result<AwsCred, Erro
 async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred, Error> {
 	let key_id = get_env(&get_env_name(EnvType::Profile, CredKey::Id, profile))?;
 	let key_secret = get_env(&get_env_name(EnvType::Profile, CredKey::Secret, profile))?;
-	let region = get_env(&get_env_name(EnvType::Profile, CredKey::Region, profile))?;
+	let region = get_env(&get_env_name(EnvType::Profile, CredKey::Region, profile)).ok();
+	let endpoint = get_env(&get_env_name(EnvType::Profile, CredKey::Endpoint, profile)).ok();
 
 	Ok(AwsCred {
 		key_id,
 		key_secret,
 		region,
+		endpoint,
 	})
 }
 
@@ -154,12 +178,13 @@ async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<Aws
 		if let Some(profile) = profiles.get_profile(profile_str) {
 			let key_id = get_profile_value(profile, "aws_access_key_id")?;
 			let key_secret = get_profile_value(profile, "aws_secret_access_key")?;
-			let region = get_profile_value(profile, "region")?;
+			let region = get_profile_value(profile, "region").ok();
 
 			return Ok(AwsCred {
 				key_id,
 				key_secret,
 				region,
+				endpoint: None, // because aws configs only
 			});
 		}
 	}
@@ -170,12 +195,13 @@ async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<Aws
 async fn load_aws_cred_from_default_aws_env() -> Result<AwsCred, Error> {
 	let key_id = get_env(AWS_ACCESS_KEY_ID)?;
 	let key_secret = get_env(AWS_SECRET_ACCESS_KEY)?;
-	let region = get_env(AWS_DEFAULT_REGION)?;
+	let region = get_env(AWS_DEFAULT_REGION).ok();
 
 	Ok(AwsCred {
 		key_id,
 		key_secret,
 		region,
+		endpoint: None,
 	})
 }
 

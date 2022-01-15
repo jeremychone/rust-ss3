@@ -58,6 +58,9 @@ pub enum Error {
 	)]
 	NoCredentialsFoundForBucket(String),
 
+	#[error("Missing config. The credential environment variables or config must have either a REGION or ENDPOINT. Both absent.")]
+	MissingConfigMustHaveEndpointOrRegion,
+
 	#[error("Invalid command. Cause: {0}")]
 	CmdInvalid(&'static str),
 

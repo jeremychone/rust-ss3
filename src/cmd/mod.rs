@@ -3,9 +3,6 @@ use crate::cmd::app::cmd_app;
 use crate::s3w::{get_sbucket, ListOptions};
 use crate::spath::SPath;
 use crate::Error;
-use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3::{Client, Credentials, Region};
-use aws_types::credentials::{ProvideCredentials, SharedCredentialsProvider};
 use clap::ArgMatches;
 
 mod app;
@@ -41,7 +38,6 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 
 	// build the bucket
 	let bucket = get_sbucket(profile, s3_url.bucket()).await?;
-
 	// build the list options
 	let recursive = argm.is_present(ARG_RECURSIVE);
 	let options = ListOptions::new(recursive, s3_url.key());

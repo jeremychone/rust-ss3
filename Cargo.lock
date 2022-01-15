@@ -1046,6 +1046,7 @@ dependencies = [
  "aws-smithy-http",
  "aws-types",
  "clap",
+ "http",
  "mime_guess",
  "pathdiff",
  "regex",
