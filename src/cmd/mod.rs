@@ -1,6 +1,6 @@
 use self::app::{ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
-use crate::s3w::{get_sbucket, ListOptions};
+use crate::s3w::{get_sbucket, ListOptions, UploadOptions};
 use crate::spath::SPath;
 use crate::Error;
 use clap::ArgMatches;
@@ -54,25 +54,31 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 }
 
 pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Error> {
-	// get the src path
-	let src_path = get_path_1(argm)?;
-	let src_path = match src_path {
-		SPath::S3(s3_url) => s3_url,
-		SPath::File(_) => return Err(Error::CmdInvalid("For now, only support s3 URL as source path.")),
-	};
+	// build the list options
+	let recursive = argm.is_present(ARG_RECURSIVE);
 
-	// get the destintation path
-	let dest_path = get_path_2(argm)?;
-	let dest_path = match dest_path {
-		SPath::S3(s3_url) => return Err(Error::CmdInvalid("For now, only support dir path for destination path.")),
-		SPath::File(file) => match file.is_dir() {
-			true => file,
-			false => return Err(Error::CmdInvalid("For now, only support dir as destination path.")),
-		},
-	};
+	let url_1 = get_path_1(argm)?;
+	let url_2 = get_path_2(argm)?;
 
-	// FIXME - implement the copy
-	println!("->> cp NOT IMPLEMENTED YET");
+	match (url_1, url_2) {
+		(SPath::S3(src_s3), SPath::File(dst_file)) => {
+			// build the bucket
+			let src_bucket = get_sbucket(profile, src_s3.bucket()).await?;
+			println!("->> will copy from {} to {}", src_s3, dst_file.display());
+		}
+
+		// upload a file or dir to a s3 url
+		(SPath::File(src_file), SPath::S3(dst_s3)) => {
+			if !src_file.exists() {
+				return Err(Error::FilePathNotFound(src_file.display().to_string()));
+			}
+			let dst_bucket = get_sbucket(profile, dst_s3.bucket()).await?;
+			dst_bucket.upload_path(&src_file, dst_s3.key(), UploadOptions::default()).await?;
+		}
+		(url_1, url_2) => {
+			println!("->> not supported yet from {:?} to {:?}", url_1, url_2);
+		}
+	}
 
 	Ok(())
 }

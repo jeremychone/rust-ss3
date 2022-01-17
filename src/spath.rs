@@ -1,8 +1,9 @@
-use regex::Regex;
-
 use crate::Error;
+use core::fmt;
+use regex::Regex;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
 pub enum SPath {
 	S3(S3Url),
 	File(PathBuf),
@@ -19,9 +20,16 @@ impl SPath {
 }
 
 // region:    S3Url
+#[derive(Debug)]
 pub struct S3Url {
 	bucket: String,
 	key: String,
+}
+impl fmt::Display for S3Url {
+	// This trait requires `fmt` with this exact signature.
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "s3://{}/{}", self.bucket, self.key)
+	}
 }
 
 impl S3Url {
