@@ -2,10 +2,12 @@ use crate::Error;
 use aws_sdk_s3::model::{CommonPrefix, Object};
 use aws_sdk_s3::{ByteStream, Client};
 use http::Uri;
+use pathdiff::diff_paths;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
+use walkdir::{DirEntry, WalkDir};
 
 // region:    S3Item
 pub enum SItemType {
@@ -56,7 +58,7 @@ impl ListOptions {
 
 // region:    UploadOptions
 pub struct UploadOptions {
-	recursive: bool,
+	pub recursive: bool,
 }
 impl Default for UploadOptions {
 	fn default() -> Self {
@@ -106,8 +108,6 @@ impl SBucket {
 	}
 
 	/// Upload a file or files in a directory into a this bucket at the given prefix. By default it wont be recursive.
-	/// - TODO - add support for directory
-	/// - TODO - add support for recursive (default should be not recursive)
 	/// - TODO - add support for rename (when prefix has same extension as file and src_path is a file)
 	/// - DECIDE - if prefix should end with '/' to denote a directory prefix rather than a file rename (with not extension)
 	///            This could be done with a options.force_prefix_as_file_key or something similar
@@ -115,10 +115,19 @@ impl SBucket {
 		// for now, do not support non file source
 		if src_path.is_file() {
 			let key = extract_dst_key(None, src_path, prefix)?;
-			println!("Uploading  {} to s3://{}/{}", src_path.display(), self.name, key);
 			self.upload_file(src_path, &key).await?;
+		} else if src_path.is_dir() {
+			let max_depth = if opts.recursive { ::std::usize::MAX } else { 1 };
+			let walker = WalkDir::new(src_path).max_depth(max_depth).into_iter();
+			for entry in walker.filter_map(|e| e.ok()) {
+				let file = entry.path();
+				if file.is_file() {
+					let key = extract_dst_key(Some(src_path), file, prefix)?;
+					self.upload_file(file, &key).await?;
+				}
+			}
 		} else {
-			return Err(Error::NotSupportedYet("Copy to s3 from directory"));
+			return Err(Error::FilePathNotFound(src_path.to_string_lossy().to_string()));
 		}
 
 		Ok(())
@@ -128,12 +137,20 @@ impl SBucket {
 	async fn upload_file(&self, src_file: &Path, key: &str) -> Result<(), Error> {
 		// Make sure it is a file
 		if !src_file.is_file() {
-			return Err(Error::NotSupportedYet("Copy from directory to s3"));
+			panic!("sbucket.upload_file should only get a file object. Code error.");
 		}
 
 		// BUILD - the src file info
 		let mime_type = mime_guess::from_path(src_file).first_or_octet_stream().to_string();
 		let body = ByteStream::from_path(&src_file).await?;
+
+		println!(
+			"Uploading  {:40} to   s3://{}/{:40} (content-type: {})",
+			src_file.display(),
+			self.name,
+			key,
+			mime_type
+		);
 
 		// BUILD - aws s3 put request
 		let builder = self
@@ -153,16 +170,26 @@ impl SBucket {
 
 // endregion: S3Bucket
 
-fn extract_dst_key(_base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str) -> Result<String, Error> {
+fn extract_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str) -> Result<String, Error> {
 	let file_name = src_file
 		.file_name()
 		.and_then(|s| s.to_str())
 		.ok_or_else(|| Error::FilePathNotFound(src_file.display().to_string()))?;
 
+	let diff_path = base_dir.and_then(|base_dir| diff_paths(src_file, base_dir));
+
+	let key = match diff_path {
+		None => Path::new(dst_prefix).join(file_name),
+		Some(diff_path) => Path::new(dst_prefix).join(diff_path),
+	};
+
 	// TODO - needs to find better way to build path
-	let key = Path::new(dst_prefix).join(file_name);
 	// TODO - Should throw an error if not 'valid' standard string
 	let key = key.display().to_string();
 
 	Ok(key)
 }
+
+// region:    File Walk
+
+// endregion: File Walk

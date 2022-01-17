@@ -69,11 +69,15 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 
 		// upload a file or dir to a s3 url
 		(SPath::File(src_file), SPath::S3(dst_s3)) => {
+			let upload_options = UploadOptions {
+				recursive,
+				..UploadOptions::default()
+			};
 			if !src_file.exists() {
 				return Err(Error::FilePathNotFound(src_file.display().to_string()));
 			}
 			let dst_bucket = get_sbucket(profile, dst_s3.bucket()).await?;
-			dst_bucket.upload_path(&src_file, dst_s3.key(), UploadOptions::default()).await?;
+			dst_bucket.upload_path(&src_file, dst_s3.key(), upload_options).await?;
 		}
 		(url_1, url_2) => {
 			println!("->> not supported yet from {:?} to {:?}", url_1, url_2);
