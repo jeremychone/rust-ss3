@@ -25,6 +25,7 @@ regex = "1"
 pathdiff = "0.2"
 walkdir = "2"
 mime_guess = "2"
+tokio-stream = "0.1"
 # Aws libs
 aws-config = "0.4"
 aws-sdk-s3 = "0.4"

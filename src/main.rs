@@ -1,7 +1,4 @@
-#![allow(unused)] // silence unused warnings while exploring (to comment out)
-
-use aws_sdk_s3::error::ListObjectsV2Error;
-use aws_sdk_s3::SdkError;
+// #![allow(unused)] // silence unused warnings while exploring (to comment out)
 use cmd::cmd_run;
 
 mod cmd;

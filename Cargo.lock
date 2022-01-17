@@ -1061,6 +1061,7 @@ dependencies = [
  "regex",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "walkdir",
 ]
 

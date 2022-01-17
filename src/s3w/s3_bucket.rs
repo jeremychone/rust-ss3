@@ -1,13 +1,12 @@
 use crate::Error;
 use aws_sdk_s3::model::{CommonPrefix, Object};
 use aws_sdk_s3::{ByteStream, Client};
-use http::Uri;
 use pathdiff::diff_paths;
-use std::fs::File;
-use std::io::Read;
+use std::fs::{create_dir_all, File};
+use std::io::{BufWriter, Write};
 use std::path::Path;
-use std::str::FromStr;
-use walkdir::{DirEntry, WalkDir};
+use tokio_stream::StreamExt;
+use walkdir::WalkDir;
 
 // region:    S3Item
 pub enum SItemType {
@@ -57,10 +56,10 @@ impl ListOptions {
 // endregion: ListOptions
 
 // region:    UploadOptions
-pub struct UploadOptions {
+pub struct CpOptions {
 	pub recursive: bool,
 }
-impl Default for UploadOptions {
+impl Default for CpOptions {
 	fn default() -> Self {
 		Self { recursive: false }
 	}
@@ -111,7 +110,7 @@ impl SBucket {
 	/// - TODO - add support for rename (when prefix has same extension as file and src_path is a file)
 	/// - DECIDE - if prefix should end with '/' to denote a directory prefix rather than a file rename (with not extension)
 	///            This could be done with a options.force_prefix_as_file_key or something similar
-	pub async fn upload_path(&self, src_path: &Path, prefix: &str, opts: UploadOptions) -> Result<(), Error> {
+	pub async fn upload_path(&self, src_path: &Path, prefix: &str, opts: CpOptions) -> Result<(), Error> {
 		// When copy only a given file
 		if src_path.is_file() {
 			let key = compute_dst_key(None, src_path, prefix, true)?;
@@ -167,7 +166,55 @@ impl SBucket {
 			.content_type(mime_type);
 
 		// EXECUTE - aws request
+		builder.send().await?;
+
+		Ok(())
+	}
+
+	pub async fn download_path(&self, key: &str, dst_path: &Path, _opts: CpOptions) -> Result<(), Error> {
+		let key_path = Path::new(key);
+		match (is_path_file_like(key_path), is_path_file_like(dst_path)) {
+			// S3 File to Path File or Dir
+			(true, dst_is_file) => {
+				// compute the dst_file
+				let file_name = get_file_name(key_path)?;
+				let dst_file = if dst_is_file {
+					dst_path.to_path_buf()
+				} else {
+					dst_path.join(file_name)
+				};
+				// create parent
+				if let Some(dst_dir) = dst_file.parent() {
+					if !dst_dir.exists() {
+						create_dir_all(dst_dir)?;
+					}
+				}
+				// perform the copy
+				self.download_file(key, &dst_file).await?;
+			}
+			// S3 Dir Path dir
+			(false, false) => return Err(Error::NotSupportedYet("S3 Dir to Path Dir")),
+			// S3 dir to file (NOT supported)
+			(false, true) => return Err(Error::NotSupportedYet("S3 Dir to Path File")),
+		}
+		Ok(())
+	}
+
+	async fn download_file(&self, key: &str, dst_file: &Path) -> Result<(), Error> {
+		println!("->> download_path {} to {}", key, dst_file.to_string_lossy());
+		// BUILD - aws s3 get request
+		let builder = self.client.get_object().bucket(&self.name).key(key);
+
 		let resp = builder.send().await?;
+
+		// Streaming
+		let mut data: ByteStream = resp.body;
+		let file = File::create(dst_file)?;
+		let mut buf_writer = BufWriter::new(file);
+		while let Some(bytes) = data.try_next().await? {
+			buf_writer.write(&bytes)?;
+		}
+		buf_writer.flush()?;
 
 		Ok(())
 	}
@@ -221,6 +268,14 @@ fn compute_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str, r
 	}
 }
 
-// region:    File Walk
+/// Determine if a key a directory (end with '/')
+fn get_file_name(path: &Path) -> Result<String, Error> {
+	path
+		.file_name()
+		.and_then(|s| s.to_str().map(|v| v.to_string()))
+		.ok_or_else(|| Error::InvalidPath(path.to_string_lossy().to_string()))
+}
 
-// endregion: File Walk
+fn is_path_file_like(path: &Path) -> bool {
+	path.extension().is_some()
+}

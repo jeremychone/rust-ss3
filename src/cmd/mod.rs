@@ -1,6 +1,6 @@
 use self::app::{ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
-use crate::s3w::{get_sbucket, ListOptions, UploadOptions};
+use crate::s3w::{get_sbucket, CpOptions, ListOptions};
 use crate::spath::SPath;
 use crate::Error;
 use clap::ArgMatches;
@@ -60,27 +60,36 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 	let url_1 = get_path_1(argm)?;
 	let url_2 = get_path_2(argm)?;
 
+	// build the options
+	let opts = CpOptions {
+		recursive,
+		..CpOptions::default()
+	};
+
 	match (url_1, url_2) {
-		(SPath::S3(src_s3), SPath::File(dst_file)) => {
+		// DOWNLOAD
+		(SPath::S3(src_s3), SPath::File(dst_path)) => {
 			// build the bucket
 			let src_bucket = get_sbucket(profile, src_s3.bucket()).await?;
-			println!("->> will copy from {} to {}", src_s3, dst_file.display());
+			// perform the copy
+			src_bucket.download_path(src_s3.key(), &dst_path, opts).await?;
 		}
 
-		// upload a file or dir to a s3 url
-		(SPath::File(src_file), SPath::S3(dst_s3)) => {
-			let upload_options = UploadOptions {
-				recursive,
-				..UploadOptions::default()
-			};
-			if !src_file.exists() {
-				return Err(Error::FilePathNotFound(src_file.display().to_string()));
+		// UPLOAD
+		(SPath::File(src_path), SPath::S3(dst_s3)) => {
+			// fail if src path does not exist
+			if !src_path.exists() {
+				return Err(Error::FilePathNotFound(src_path.display().to_string()));
 			}
+
+			// get the destination sbucket
 			let dst_bucket = get_sbucket(profile, dst_s3.bucket()).await?;
-			dst_bucket.upload_path(&src_file, dst_s3.key(), upload_options).await?;
+			// perform the copy
+			dst_bucket.upload_path(&src_path, dst_s3.key(), opts).await?;
 		}
+		// UNSUPPORTED - for now, s3<->s3 or file<->file
 		(url_1, url_2) => {
-			println!("->> not supported yet from {:?} to {:?}", url_1, url_2);
+			println!("NOT SUPPORTED - from {:?} to {:?} not supported", url_1, url_2);
 		}
 	}
 

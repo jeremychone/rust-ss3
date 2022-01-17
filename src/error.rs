@@ -1,4 +1,4 @@
-use aws_sdk_s3::error::{ListObjectsV2Error, PutObjectError};
+use aws_sdk_s3::error::{ListObjectsV2Error, PutObjectError, GetObjectError};
 use aws_sdk_s3::SdkError;
 
 #[derive(thiserror::Error, Debug)]
@@ -52,11 +52,17 @@ pub enum Error {
 	#[error("Not Supported yet - '{0}' feature is not supported yet")]
 	NotSupportedYet(&'static str),
 
+	#[error("Cannot perform, invalid key '{0}'")]
+	InvalidPath(String),
+
 	#[error(transparent)]
 	InvalidUri(#[from] http::uri::InvalidUri),
 
 	#[error(transparent)]
 	ByteStreamError(#[from] aws_smithy_http::byte_stream::Error),
+
+	#[error(transparent)]
+	AwsGetObjectError(#[from] SdkError<GetObjectError>),
 
 	#[error(transparent)]
 	AwsListObjectsV2Error(#[from] SdkError<ListObjectsV2Error>),
