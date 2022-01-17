@@ -112,21 +112,26 @@ impl SBucket {
 	/// - DECIDE - if prefix should end with '/' to denote a directory prefix rather than a file rename (with not extension)
 	///            This could be done with a options.force_prefix_as_file_key or something similar
 	pub async fn upload_path(&self, src_path: &Path, prefix: &str, opts: UploadOptions) -> Result<(), Error> {
-		// for now, do not support non file source
+		// When copy only a given file
 		if src_path.is_file() {
-			let key = extract_dst_key(None, src_path, prefix)?;
+			let key = compute_dst_key(None, src_path, prefix, true)?;
 			self.upload_file(src_path, &key).await?;
-		} else if src_path.is_dir() {
+		}
+		// When copying all file from a directory (recursive if opts.recursive)
+		else if src_path.is_dir() {
 			let max_depth = if opts.recursive { ::std::usize::MAX } else { 1 };
 			let walker = WalkDir::new(src_path).max_depth(max_depth).into_iter();
 			for entry in walker.filter_map(|e| e.ok()) {
 				let file = entry.path();
 				if file.is_file() {
-					let key = extract_dst_key(Some(src_path), file, prefix)?;
+					// When
+					let key = compute_dst_key(Some(src_path), file, prefix, false)?;
 					self.upload_file(file, &key).await?;
 				}
 			}
-		} else {
+		}
+		// if not file or dir, we fail for now. Needs to decide what to do with symlink
+		else {
 			return Err(Error::FilePathNotFound(src_path.to_string_lossy().to_string()));
 		}
 
@@ -170,24 +175,50 @@ impl SBucket {
 
 // endregion: S3Bucket
 
-fn extract_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str) -> Result<String, Error> {
+/// Compute the destination key given the eventual base_dir and src_file
+/// * `dst_prefix` - the base prefix (directory like) or potentially the target key if renamable true
+/// * `renamable` - when this flag, if the dst_prefix has a extension same as src_file (case insensitive)
+fn compute_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str, renamable: bool) -> Result<String, Error> {
 	let file_name = src_file
 		.file_name()
 		.and_then(|s| s.to_str())
 		.ok_or_else(|| Error::FilePathNotFound(src_file.display().to_string()))?;
 
-	let diff_path = base_dir.and_then(|base_dir| diff_paths(src_file, base_dir));
-
-	let key = match diff_path {
-		None => Path::new(dst_prefix).join(file_name),
-		Some(diff_path) => Path::new(dst_prefix).join(diff_path),
+	// Determine if it is an rename operation (if )
+	let rename_only = if renamable {
+		let dst_path = Path::new(dst_prefix);
+		match (
+			src_file.extension().and_then(|ext| ext.to_str().map(|v| v.to_lowercase())),
+			dst_path.extension().and_then(|ext| ext.to_str().map(|v| v.to_lowercase())),
+		) {
+			(Some(src_ext), Some(dst_ext)) => {
+				if src_ext == dst_ext {
+					true
+				} else {
+					false
+				}
+			}
+			(_, _) => false,
+		}
+	} else {
+		false
 	};
 
-	// TODO - needs to find better way to build path
-	// TODO - Should throw an error if not 'valid' standard string
-	let key = key.display().to_string();
+	if rename_only {
+		Ok(dst_prefix.to_string())
+	} else {
+		let diff_path = base_dir.and_then(|base_dir| diff_paths(src_file, base_dir));
 
-	Ok(key)
+		let key = match diff_path {
+			None => Path::new(dst_prefix).join(file_name),
+			Some(diff_path) => Path::new(dst_prefix).join(diff_path),
+		};
+
+		// TODO - Should throw an error if not a unicode string
+		let key = key.display().to_string();
+
+		Ok(key)
+	}
 }
 
 // region:    File Walk
