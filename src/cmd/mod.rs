@@ -1,6 +1,6 @@
 use self::app::{ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
-use crate::s3w::{get_sbucket, CpOptions, ListOptions};
+use crate::s3w::{get_sbucket, CpOptions, ListOptions, ListResult};
 use crate::spath::SPath;
 use crate::Error;
 use clap::ArgMatches;
@@ -40,14 +40,18 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 	let bucket = get_sbucket(profile, s3_url.bucket()).await?;
 	// build the list options
 	let recursive = argm.is_present(ARG_RECURSIVE);
-	let options = ListOptions::new(recursive, s3_url.key());
+	let options = ListOptions::new(recursive);
 
 	// execute the list
-	let items = bucket.list(&options).await?;
+	let ListResult { prefixes, objects } = bucket.list(s3_url.key(), &options).await?;
 
-	// TODO - fix print
-	for obj in items.iter() {
-		println!("{}", obj.key);
+	// Print prefixes (dirs) first
+	for item in prefixes.iter() {
+		println!("{}", item.key);
+	}
+	// Print objects
+	for item in objects.iter() {
+		println!("{}", item.key);
 	}
 
 	Ok(())

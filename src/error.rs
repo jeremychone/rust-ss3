@@ -1,4 +1,4 @@
-use aws_sdk_s3::error::{ListObjectsV2Error, PutObjectError, GetObjectError};
+use aws_sdk_s3::error::{GetObjectError, ListObjectsV2Error, PutObjectError};
 use aws_sdk_s3::SdkError;
 
 #[derive(thiserror::Error, Debug)]
@@ -48,6 +48,9 @@ pub enum Error {
 
 	#[error("File path '{0}' not found.")]
 	FilePathNotFound(String),
+
+	#[error("Not Supported - '{0}' feature is not supported.")]
+	NotSupported(&'static str),
 
 	#[error("Not Supported yet - '{0}' feature is not supported yet")]
 	NotSupportedYet(&'static str),

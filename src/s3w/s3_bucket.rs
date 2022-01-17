@@ -2,18 +2,22 @@ use crate::Error;
 use aws_sdk_s3::model::{CommonPrefix, Object};
 use aws_sdk_s3::{ByteStream, Client};
 use pathdiff::diff_paths;
+use std::collections::{HashSet, VecDeque};
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use tokio_stream::StreamExt;
 use walkdir::WalkDir;
 
 // region:    S3Item
+#[derive(Debug)]
 pub enum SItemType {
 	Object,
 	Prefix,
 }
 
+#[derive(Debug)]
 pub struct SItem {
 	pub typ: SItemType,
 	pub key: String,
@@ -36,24 +40,39 @@ impl SItem {
 			typ: SItemType::Prefix,
 		}
 	}
+
+	fn from_prefix_str(prefix: &str) -> SItem {
+		SItem {
+			key: prefix.to_string(),
+			typ: SItemType::Prefix,
+		}
+	}
 }
 // endregion: S3Item
 
 // region:    ListOptions
 pub struct ListOptions {
 	recursive: bool,
-	prefix: String,
+}
+impl Default for ListOptions {
+	fn default() -> Self {
+		Self { recursive: false }
+	}
 }
 
 impl ListOptions {
-	pub fn new(recursive: bool, prefix: &str) -> ListOptions {
-		ListOptions {
-			recursive,
-			prefix: prefix.to_string(),
-		}
+	pub fn new(recursive: bool) -> ListOptions {
+		ListOptions { recursive }
 	}
 }
 // endregion: ListOptions
+
+// region:    ListResult
+pub struct ListResult {
+	pub prefixes: Vec<SItem>,
+	pub objects: Vec<SItem>,
+}
+// endregion: ListResult
 
 // region:    UploadOptions
 pub struct CpOptions {
@@ -79,9 +98,9 @@ impl SBucket {
 }
 
 impl SBucket {
-	pub async fn list(&self, options: &ListOptions) -> Result<Vec<SItem>, Error> {
+	pub async fn list(&self, prefix: &str, options: &ListOptions) -> Result<ListResult, Error> {
 		// BUILD - the aws S3 list request
-		let mut builder = self.client.list_objects_v2().prefix(&options.prefix).bucket(&self.name);
+		let mut builder = self.client.list_objects_v2().prefix(prefix).bucket(&self.name);
 
 		if !options.recursive {
 			builder = builder.delimiter("/");
@@ -90,20 +109,18 @@ impl SBucket {
 		// EXECUTE - the AWS S3 request
 		let resp = builder.send().await?;
 
-		// PARSE - reponse data
-		// first get the prefixes
-		let mut data: Vec<SItem> = resp
+		// get the prefixes
+		let prefixes: Vec<SItem> = resp
 			.common_prefixes()
 			.unwrap_or_default()
 			.into_iter()
 			.map(SItem::from_prefix)
 			.collect();
-		// then, get the Objects
-		let objects: Vec<SItem> = resp.contents().unwrap_or_default().into_iter().map(SItem::from_object).collect();
-		// concatenate with objects
-		data.extend(objects);
 
-		Ok(data)
+		// get the objects
+		let objects: Vec<SItem> = resp.contents().unwrap_or_default().into_iter().map(SItem::from_object).collect();
+
+		Ok(ListResult { prefixes, objects })
 	}
 
 	/// Upload a file or files in a directory into a this bucket at the given prefix. By default it wont be recursive.
@@ -171,18 +188,18 @@ impl SBucket {
 		Ok(())
 	}
 
-	pub async fn download_path(&self, key: &str, dst_path: &Path, _opts: CpOptions) -> Result<(), Error> {
-		let key_path = Path::new(key);
-		match (is_path_file_like(key_path), is_path_file_like(dst_path)) {
+	pub async fn download_path(&self, base_key: &str, dst_path: &Path, opts: CpOptions) -> Result<(), Error> {
+		let key_path = Path::new(base_key);
+		match (path_type(key_path), path_type(dst_path)) {
 			// S3 File to Path File or Dir
-			(true, dst_is_file) => {
+			(PathType::File, dst_type) => {
 				// compute the dst_file
 				let file_name = get_file_name(key_path)?;
-				let dst_file = if dst_is_file {
-					dst_path.to_path_buf()
-				} else {
-					dst_path.join(file_name)
+				let dst_file = match dst_type {
+					PathType::File => dst_path.to_path_buf(),
+					PathType::Dir => dst_path.join(file_name),
 				};
+
 				// create parent
 				if let Some(dst_dir) = dst_file.parent() {
 					if !dst_dir.exists() {
@@ -190,18 +207,56 @@ impl SBucket {
 					}
 				}
 				// perform the copy
-				self.download_file(key, &dst_file).await?;
+				self.download_file(base_key, &dst_file).await?;
 			}
 			// S3 Dir Path dir
-			(false, false) => return Err(Error::NotSupportedYet("S3 Dir to Path Dir")),
+			(PathType::Dir, PathType::Dir) => {
+				// prefix queue to avoid recurive function calls (leaner & simpler)
+				let mut prefix_queue: VecDeque<SItem> = VecDeque::new();
+				prefix_queue.push_front(SItem::from_prefix_str(base_key));
+
+				// default options for the list(...) calls
+				// Note: For now, the list(...) does not do the recursive calls, but folder by folder
+				//       pros - assuming a folder does not have more than the fetch limit, it will scale well
+				//       cons - will require to make list request per folder if the donload_path is recursive
+				let list_opts = ListOptions::default();
+
+				// cheap optimization to not check parent dir all the time
+				let mut dir_exist_set: HashSet<String> = HashSet::new();
+
+				while let Some(prefix) = prefix_queue.pop_front() {
+					// get the objects and prefixes
+					let ListResult { prefixes, objects } = self.list(&prefix.key, &list_opts).await?;
+
+					// download the objects of this prefix
+					for item in objects.iter() {
+						let dst_file = compute_dst_path(base_key, &item.key, dst_path)?;
+
+						if let Some(dst_file_parent) = dst_file.parent() {
+							let parent_dir_string = dst_file_parent.to_string_lossy();
+							if !dir_exist_set.contains(parent_dir_string.deref()) || !dst_file_parent.exists() {
+								create_dir_all(dst_file_parent)?;
+								dir_exist_set.insert(parent_dir_string.to_string());
+							}
+						}
+
+						self.download_file(&item.key, &dst_file).await?;
+					}
+
+					// if the download is recursive ass those prefixes to the prefix_queue
+					if opts.recursive {
+						prefix_queue.extend(prefixes);
+					}
+				}
+			}
 			// S3 dir to file (NOT supported)
-			(false, true) => return Err(Error::NotSupportedYet("S3 Dir to Path File")),
+			(PathType::Dir, PathType::File) => return Err(Error::NotSupported("S3 Dir to Path File")),
 		}
 		Ok(())
 	}
 
 	async fn download_file(&self, key: &str, dst_file: &Path) -> Result<(), Error> {
-		println!("->> download_path {} to {}", key, dst_file.to_string_lossy());
+		println!("Downloading {} to {}", key, dst_file.to_string_lossy());
 		// BUILD - aws s3 get request
 		let builder = self.client.get_object().bucket(&self.name).key(key);
 
@@ -221,6 +276,23 @@ impl SBucket {
 }
 
 // endregion: S3Bucket
+
+/// Compute the destination file path given a base key and object key
+/// Note: For now simple substring
+fn compute_dst_path(base_key: &str, object_key: &str, base_dir: &Path) -> Result<PathBuf, Error> {
+	// validate params
+	if !object_key.starts_with(base_key) {
+		panic!(
+			"CODE ERROR - compute_dst_path - Base key '{}' is not the base for object_key '{}'",
+			base_key, object_key
+		);
+	}
+
+	// key diff
+	let rel_key = object_key[base_key.len()..].to_string();
+
+	Ok(base_dir.join(rel_key))
+}
 
 /// Compute the destination key given the eventual base_dir and src_file
 /// * `dst_prefix` - the base prefix (directory like) or potentially the target key if renamable true
@@ -276,6 +348,14 @@ fn get_file_name(path: &Path) -> Result<String, Error> {
 		.ok_or_else(|| Error::InvalidPath(path.to_string_lossy().to_string()))
 }
 
-fn is_path_file_like(path: &Path) -> bool {
-	path.extension().is_some()
+enum PathType {
+	File,
+	Dir,
+}
+
+fn path_type(path: &Path) -> PathType {
+	match path.extension().is_some() {
+		true => PathType::File,
+		false => PathType::Dir,
+	}
 }
