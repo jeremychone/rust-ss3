@@ -5,6 +5,7 @@ pub const ARG_PATH_1: &str = "path_1";
 pub const ARG_PATH_2: &str = "path_2";
 pub const ARG_PROFILE: &str = "profile";
 pub const ARG_EXCLUDE: &str = "exclude";
+pub const ARG_OVER: &str = "over";
 
 pub fn cmd_app() -> App<'static> {
 	App::new("ss3")
@@ -30,6 +31,12 @@ fn sub_cp() -> App<'static> {
 		.arg(arg_path_2())
 		.arg(arg_exlude())
 		.arg(arg_recursive())
+		.arg(
+			Arg::new(ARG_OVER)
+				.long("over")
+				.takes_value(true)
+				.help("Overwrite mode. Default 'skip'. Can be 'skip', 'write', 'fail'"),
+		)
 }
 
 // region:    Common Args

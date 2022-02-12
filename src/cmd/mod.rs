@@ -1,6 +1,6 @@
 use self::app::{ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
-use crate::s3w::{get_sbucket, CpOptions, ListOptions, ListResult};
+use crate::s3w::{get_sbucket, CpOptions, ListOptions, ListResult, OverMode};
 use crate::spath::SPath;
 use crate::Error;
 use clap::ArgMatches;
@@ -115,7 +115,7 @@ fn get_path_2(argm: &ArgMatches) -> Result<SPath, Error> {
 // region:    --- CpOptions Builder
 impl CpOptions {
 	fn from_args(argm: &ArgMatches) -> CpOptions {
-		// build the list options
+		// extract recursive flag
 		let recursive = argm.is_present(ARG_RECURSIVE);
 
 		// extract the eventual strings
@@ -128,10 +128,20 @@ impl CpOptions {
 			builder.build().unwrap()
 		});
 
+		// extract the over mode
+		let over = match argm.value_of("over") {
+			Some("write") => OverMode::Write,
+			Some("skip") => OverMode::Skip,
+			Some("fail") => OverMode::Fail,
+			Some(other) => panic!("Invalid over mode {}. Must be 'write', 'skip', 'fail'", other),
+			None => OverMode::default(),
+		};
+
 		// build the options
 		CpOptions {
 			recursive,
 			excludes: globs,
+			over,
 		}
 	}
 }

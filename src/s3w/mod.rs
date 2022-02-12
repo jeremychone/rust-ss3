@@ -12,6 +12,7 @@ mod s3_bucket;
 
 // re-export
 pub use self::cp::CpOptions;
+pub use self::cp::OverMode;
 pub use self::cred::get_sbucket;
 pub use self::s3_bucket::{ListOptions, ListResult};
 

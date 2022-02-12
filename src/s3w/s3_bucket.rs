@@ -114,6 +114,16 @@ impl SBucket {
 
 		Ok(ListResult { prefixes, objects })
 	}
+
+	pub async fn exists(&self, key: &str) -> bool {
+		let mut builder = self.client.head_object().key(key).bucket(&self.name);
+		let resp = builder.send().await;
+		resp.is_ok()
+	}
+
+	pub fn s3_url(&self, key: &str) -> String {
+		format!("s3://{}/{key}", self.name)
+	}
 }
 
 // endregion: S3Bucket

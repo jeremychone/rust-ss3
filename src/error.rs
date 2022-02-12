@@ -1,4 +1,4 @@
-use aws_sdk_s3::error::{GetObjectError, ListObjectsV2Error, PutObjectError};
+use aws_sdk_s3::error::{GetObjectError, HeadObjectError, ListObjectsV2Error, PutObjectError};
 use aws_sdk_s3::SdkError;
 
 #[derive(thiserror::Error, Debug)]
@@ -58,6 +58,12 @@ pub enum Error {
 	#[error("Cannot perform, invalid key '{0}'")]
 	InvalidPath(String),
 
+	#[error("Fail mode is on and the object '{0}' already exits")]
+	ObjectExistsOverFailMode(String),
+
+	#[error("Fail mode is on and the file '{0}' already exits")]
+	FileExistsOverFailMode(String),
+
 	#[error(transparent)]
 	InvalidUri(#[from] http::uri::InvalidUri),
 
@@ -72,6 +78,9 @@ pub enum Error {
 
 	#[error(transparent)]
 	AwsPutObjectError(#[from] SdkError<PutObjectError>),
+
+	#[error(transparent)]
+	AwsHeadObjectError(#[from] SdkError<HeadObjectError>),
 
 	#[error(transparent)]
 	IOError(#[from] std::io::Error),

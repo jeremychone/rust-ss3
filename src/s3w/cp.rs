@@ -12,9 +12,22 @@ use std::path::Path;
 use tokio_stream::StreamExt;
 use walkdir::WalkDir;
 
+#[derive(Debug)]
+pub enum OverMode {
+	Write,
+	Skip,
+	Fail,
+}
+impl Default for OverMode {
+	fn default() -> Self {
+		OverMode::Skip
+	}
+}
+
 pub struct CpOptions {
 	pub recursive: bool,
 	pub excludes: Option<GlobSet>,
+	pub over: OverMode,
 }
 
 impl Default for CpOptions {
@@ -22,6 +35,7 @@ impl Default for CpOptions {
 		Self {
 			recursive: false,
 			excludes: None,
+			over: OverMode::Skip,
 		}
 	}
 }
@@ -67,31 +81,37 @@ impl SBucket {
 
 		if let Some(src_file_str) = src_file.to_str() {
 			if accept_path(&src_file_str, &opts) {
-				// BUILD - the src file info
-				let mime_type = mime_guess::from_path(src_file).first_or_octet_stream().to_string();
-				let body = ByteStream::from_path(&src_file).await?;
+				if validate_over_for_s3_dest(self, key, &opts).await? {
+					// BUILD - the src file info
+					let mime_type = mime_guess::from_path(src_file).first_or_octet_stream().to_string();
+					let body = ByteStream::from_path(&src_file).await?;
 
-				println!(
-					"Uploading  {:40} to   s3://{}/{:40} (content-type: {})",
-					src_file.display(),
-					self.name,
-					key,
-					mime_type
-				);
+					self.exists(key).await;
 
-				// BUILD - aws s3 put request
-				let builder = self
-					.client
-					.put_object()
-					.key(key)
-					.bucket(&self.name)
-					.body(body)
-					.content_type(mime_type);
+					println!(
+						"{:15} {:50} --> {}   (content-type: {})",
+						"Uploading",
+						src_file.display(),
+						self.s3_url(key),
+						mime_type
+					);
 
-				// EXECUTE - aws request
-				builder.send().await?;
+					// BUILD - aws s3 put request
+					let builder = self
+						.client
+						.put_object()
+						.key(key)
+						.bucket(&self.name)
+						.body(body)
+						.content_type(mime_type);
+
+					// EXECUTE - aws request
+					builder.send().await?;
+				} else {
+					println!("{:15} {}", "Skip (exists)", self.s3_url(key));
+				}
 			} else {
-				println!("Excludes   {src_file_str}");
+				println!("{:15} {src_file_str}", "Excludes");
 			}
 		}
 
@@ -170,22 +190,32 @@ impl SBucket {
 
 	async fn download_file(&self, key: &str, dst_file: &Path, opts: &CpOptions) -> Result<(), Error> {
 		if accept_path(key, opts) {
-			println!("Downloading s3://{}/{:40} to {}", self.name, key, dst_file.to_string_lossy());
-			// BUILD - aws s3 get request
-			let builder = self.client.get_object().bucket(&self.name).key(key);
+			if validate_over_for_file_dest(dst_file, opts)? {
+				println!(
+					"{:20} s3://{}/{:40} to {}",
+					"Downloading",
+					self.name,
+					key,
+					dst_file.to_string_lossy()
+				);
+				// BUILD - aws s3 get request
+				let builder = self.client.get_object().bucket(&self.name).key(key);
 
-			let resp = builder.send().await?;
+				let resp = builder.send().await?;
 
-			// Streaming
-			let mut data: ByteStream = resp.body;
-			let file = File::create(dst_file)?;
-			let mut buf_writer = BufWriter::new(file);
-			while let Some(bytes) = data.try_next().await? {
-				buf_writer.write(&bytes)?;
+				// Streaming
+				let mut data: ByteStream = resp.body;
+				let file = File::create(dst_file)?;
+				let mut buf_writer = BufWriter::new(file);
+				while let Some(bytes) = data.try_next().await? {
+					buf_writer.write(&bytes)?;
+				}
+				buf_writer.flush()?;
+			} else {
+				println!("{:20} {}", "Skip (exists)", dst_file.display());
 			}
-			buf_writer.flush()?;
 		} else {
-			println!("Excludes    s3://{}/{:40}", self.name, key);
+			println!("{:20} {}", "Excludes", self.s3_url(key));
 		}
 
 		Ok(())
@@ -200,5 +230,39 @@ fn accept_path(path: &str, opts: &CpOptions) -> bool {
 			m.len() == 0 // if no match, true
 		}
 		None => true,
+	}
+}
+
+async fn validate_over_for_s3_dest(sbucket: &SBucket, key: &str, opts: &CpOptions) -> Result<bool, Error> {
+	match opts.over {
+		// if over: Write, then always true, we overwrite
+		OverMode::Write => Ok(true),
+		// if skip, then the opposite of the exists state
+		OverMode::Skip => Ok(!sbucket.exists(key).await),
+		// if fail mode, then if exists fail with error
+		OverMode::Fail => {
+			if sbucket.exists(key).await {
+				Err(Error::ObjectExistsOverFailMode(format!("s3://{}/{key}", sbucket.name)))
+			} else {
+				Ok(true)
+			}
+		}
+	}
+}
+
+fn validate_over_for_file_dest(file: &Path, opts: &CpOptions) -> Result<bool, Error> {
+	match opts.over {
+		// if over: Write, then always true, we overwrite
+		OverMode::Write => Ok(true),
+		// if skip, then the opposite of the exists state
+		OverMode::Skip => Ok(!file.exists()),
+		// if fail mode, then if exists fail with error
+		OverMode::Fail => {
+			if file.exists() {
+				Err(Error::FileExistsOverFailMode(file.display().to_string()))
+			} else {
+				Ok(true)
+			}
+		}
 	}
 }
