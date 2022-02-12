@@ -4,6 +4,7 @@ use crate::s3w::{get_sbucket, CpOptions, ListOptions, ListResult};
 use crate::spath::SPath;
 use crate::Error;
 use clap::ArgMatches;
+use globset::{Glob, GlobSetBuilder};
 
 mod app;
 
@@ -58,17 +59,10 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 }
 
 pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Error> {
-	// build the list options
-	let recursive = argm.is_present(ARG_RECURSIVE);
-
 	let url_1 = get_path_1(argm)?;
 	let url_2 = get_path_2(argm)?;
 
-	// build the options
-	let opts = CpOptions {
-		recursive,
-		..CpOptions::default()
-	};
+	let opts = CpOptions::from_args(argm);
 
 	match (url_1, url_2) {
 		// DOWNLOAD
@@ -117,3 +111,28 @@ fn get_path_2(argm: &ArgMatches) -> Result<SPath, Error> {
 	Ok(SPath::from_str(path)?)
 }
 // endregion: Args Utils
+
+// region:    --- CpOptions Builder
+impl CpOptions {
+	fn from_args(argm: &ArgMatches) -> CpOptions {
+		// build the list options
+		let recursive = argm.is_present(ARG_RECURSIVE);
+
+		// extract the eventual strings
+		let globs: Option<Vec<&str>> = argm.values_of("exclude").map(|vs| vs.map(|v| v).collect());
+		let globs = globs.map(|globs| {
+			let mut builder = GlobSetBuilder::new();
+			for glob in globs {
+				builder.add(Glob::new(glob).unwrap());
+			}
+			builder.build().unwrap()
+		});
+
+		// build the options
+		CpOptions {
+			recursive,
+			excludes: globs,
+		}
+	}
+}
+// endregion: --- CpOptions Builder

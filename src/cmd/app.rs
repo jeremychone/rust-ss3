@@ -4,6 +4,7 @@ pub const ARG_RECURSIVE: &str = "recursive";
 pub const ARG_PATH_1: &str = "path_1";
 pub const ARG_PATH_2: &str = "path_2";
 pub const ARG_PROFILE: &str = "profile";
+pub const ARG_EXCLUDE: &str = "exclude";
 
 pub fn cmd_app() -> App<'static> {
 	App::new("ss3")
@@ -27,6 +28,7 @@ fn sub_cp() -> App<'static> {
 		.arg(arg_profile())
 		.arg(arg_path_1())
 		.arg(arg_path_2())
+		.arg(arg_exlude())
 		.arg(arg_recursive())
 }
 
@@ -48,5 +50,14 @@ fn arg_profile() -> Arg<'static> {
 		.short('p')
 		.takes_value(true)
 		.help("The profile to use if no bucket environment credentials.")
+}
+
+fn arg_exlude() -> Arg<'static> {
+	Arg::new(ARG_EXCLUDE)
+		.short('e')
+		.long("exclude")
+		.takes_value(true)
+		.multiple_occurrences(true)
+		.help("The glob to be excluded")
 }
 // endregion: Common Args

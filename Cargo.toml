@@ -1,6 +1,6 @@
 [package]
 name = "ss3"
-version = "0.0.3"
+version = "0.0.4-SNAPSHOT"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -21,6 +21,7 @@ tokio = { version = "1", features = ["full"] }
 clap =  {version = "3", features = ["cargo"]}
 thiserror = "1"
 regex = "1"
+globset = "0.3"
 # File libs
 pathdiff = "0.2"
 walkdir = "2"
