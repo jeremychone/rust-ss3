@@ -5,6 +5,7 @@ pub const ARG_PATH_1: &str = "path_1";
 pub const ARG_PATH_2: &str = "path_2";
 pub const ARG_PROFILE: &str = "profile";
 pub const ARG_EXCLUDE: &str = "exclude";
+pub const ARG_INCLUDE: &str = "include";
 pub const ARG_OVER: &str = "over";
 
 pub fn cmd_app() -> App<'static> {
@@ -29,6 +30,7 @@ fn sub_cp() -> App<'static> {
 		.arg(arg_profile())
 		.arg(arg_path_1())
 		.arg(arg_path_2())
+		.arg(arg_include())
 		.arg(arg_exlude())
 		.arg(arg_recursive())
 		.arg(
@@ -65,6 +67,15 @@ fn arg_exlude() -> Arg<'static> {
 		.long("exclude")
 		.takes_value(true)
 		.multiple_occurrences(true)
-		.help("The glob to be excluded")
+		.help("Exclude the items that match the glob expression.")
+}
+
+fn arg_include() -> Arg<'static> {
+	Arg::new(ARG_INCLUDE)
+		.short('i')
+		.long("include")
+		.takes_value(true)
+		.multiple_occurrences(true)
+		.help("Only process the item that match the glob expression.")
 }
 // endregion: Common Args

@@ -4,7 +4,7 @@ use crate::s3w::{get_sbucket, CpOptions, ListOptions, ListResult, OverMode};
 use crate::spath::SPath;
 use crate::Error;
 use clap::ArgMatches;
-use globset::{Glob, GlobSetBuilder};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 
 mod app;
 
@@ -119,14 +119,8 @@ impl CpOptions {
 		let recursive = argm.is_present(ARG_RECURSIVE);
 
 		// extract the eventual strings
-		let globs: Option<Vec<&str>> = argm.values_of("exclude").map(|vs| vs.map(|v| v).collect());
-		let globs = globs.map(|globs| {
-			let mut builder = GlobSetBuilder::new();
-			for glob in globs {
-				builder.add(Glob::new(glob).unwrap());
-			}
-			builder.build().unwrap()
-		});
+		let excludes = build_glob_set(argm, "exclude");
+		let includes = build_glob_set(argm, "include");
 
 		// extract the over mode
 		let over = match argm.value_of("over") {
@@ -140,9 +134,21 @@ impl CpOptions {
 		// build the options
 		CpOptions {
 			recursive,
-			excludes: globs,
+			excludes,
+			includes,
 			over,
 		}
 	}
+}
+
+fn build_glob_set(argm: &ArgMatches, name: &str) -> Option<GlobSet> {
+	let globs: Option<Vec<&str>> = argm.values_of(name).map(|vs| vs.map(|v| v).collect());
+	globs.map(|globs| {
+		let mut builder = GlobSetBuilder::new();
+		for glob in globs {
+			builder.add(Glob::new(glob).unwrap());
+		}
+		builder.build().unwrap()
+	})
 }
 // endregion: --- CpOptions Builder

@@ -1,17 +1,6 @@
-use super::cp::CpOptions;
-use super::{compute_dst_path, get_file_name, path_type, PathType};
 use crate::Error;
 use aws_sdk_s3::model::{CommonPrefix, Object};
-use aws_sdk_s3::{ByteStream, Client};
-use globset::GlobSet;
-use pathdiff::diff_paths;
-use std::collections::{HashSet, VecDeque};
-use std::fs::{create_dir_all, File};
-use std::io::{BufWriter, Write};
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
-use tokio_stream::StreamExt;
-use walkdir::WalkDir;
+use aws_sdk_s3::Client;
 
 // region:    --- S3Item
 #[derive(Debug)]
@@ -116,7 +105,7 @@ impl SBucket {
 	}
 
 	pub async fn exists(&self, key: &str) -> bool {
-		let mut builder = self.client.head_object().key(key).bucket(&self.name);
+		let builder = self.client.head_object().key(key).bucket(&self.name);
 		let resp = builder.send().await;
 		resp.is_ok()
 	}

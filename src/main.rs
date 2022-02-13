@@ -1,4 +1,4 @@
-#![allow(unused)] // silence unused warnings while exploring (to comment out)
+// #![allow(unused)] // silence unused warnings while exploring (to comment out)
 use cmd::cmd_run;
 
 mod cmd;
