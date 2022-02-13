@@ -82,19 +82,19 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 		return Err(Error::MissingConfigMustHaveEndpointOrRegion);
 	}
 
-	let mut config = Builder::new().credentials_provider(SharedCredentialsProvider::new(cred));
+	let mut builder = Builder::new().credentials_provider(SharedCredentialsProvider::new(cred));
 
 	if let Some(endpoint) = endpoint {
-		config = config.endpoint_resolver(Endpoint::immutable(Uri::from_str(&endpoint).unwrap()));
+		builder = builder.endpoint_resolver(Endpoint::immutable(Uri::from_str(&endpoint).unwrap()));
 		// WORKAROUND - Right now the aws-sdk throw a NoRegion on .send if not region even if we have a endpoint
-		config = config.region(Region::new("endpoint-region"));
+		builder = builder.region(Region::new("endpoint-region"));
 	}
 
 	if let Some(region) = region {
-		config = config.region(Region::new(region));
+		builder = builder.region(Region::new(region));
 	}
 
-	let config = config.build();
+	let config = builder.build();
 	let client = Client::from_conf(config);
 	Ok(client)
 }
