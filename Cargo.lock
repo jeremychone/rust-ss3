@@ -1118,7 +1118,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "ss3"
-version = "0.0.4-SNAPSHOT"
+version = "0.0.4"
 dependencies = [
  "aws-config",
  "aws-sdk-s3",
