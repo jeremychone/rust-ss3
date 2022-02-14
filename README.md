@@ -35,10 +35,10 @@ ss3 cp ./image-01.jpg s3://my-bucket/my-folder
 ss3 cp ./ s3://my-bucket/my-folder/ -r
 
 # Download single file to a local directory (parent dirs will be )
-ss3 cp s3://my-bucket/image-01.jpg ./downloads/
+ss3 cp s3://my-bucket/image-01.jpg ./.downloads/
 
 # Download a full folder (for now make sure to add end '/' in the s3 URL to distinguish from object)
-ss3 cp s3://my-bucket/my-folder/ ./downloads/ -r
+ss3 cp s3://my-bucket/my-folder/ ./.downloads/ -r
 ```
 
 ## Configurations
