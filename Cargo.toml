@@ -21,16 +21,16 @@ tokio = { version = "1", features = ["full"] }
 clap =  {version = "3", features = ["cargo"]}
 thiserror = "1"
 regex = "1"
-globset = "0.3"
+globset = "0.4"
 # File libs
 pathdiff = "0.2"
 walkdir = "2"
 mime_guess = "2"
 tokio-stream = "0.1"
 # Aws libs
-aws-config = "0.6"
-aws-sdk-s3 = "0.6"
-aws-types = "0.6"
-aws-smithy-http = "0.36"
+aws-config = "0.8"
+aws-sdk-s3 = "0.8"
+aws-types = "0.8"
+aws-smithy-http = "0.38"
 http = "0.2"
 

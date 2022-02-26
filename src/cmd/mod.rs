@@ -39,21 +39,36 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 
 	// build the bucket
 	let bucket = get_sbucket(profile, s3_url.bucket()).await?;
-	// build the list options
 	let recursive = argm.is_present(ARG_RECURSIVE);
-	let options = ListOptions::new(recursive);
 
-	// execute the list
-	let ListResult { prefixes, objects } = bucket.list(s3_url.key(), &options).await?;
+	// next continuation token
+	let mut continuation_token: Option<String> = None;
 
-	// Print prefixes (dirs) first
-	for item in prefixes.iter() {
-		println!("{}", item.key);
-	}
-	// Print objects
-	for item in objects.iter() {
-		println!("{}", item.key);
-	}
+	while {
+		// build the option (take ownershipt of the continuation_token)
+		let options = ListOptions::new(recursive, continuation_token.clone());
+
+		// execute the list
+		let ListResult {
+			prefixes,
+			objects,
+			next_continuation_token,
+		} = bucket.list(s3_url.key(), &options).await?;
+
+		// -- Do the prints
+		// Print prefixes (dirs) first
+		for item in prefixes.iter() {
+			println!("{}", item.key);
+		}
+		// Print objects
+		for item in objects.iter() {
+			println!("{}", item.key);
+		}
+
+		// -- Condition to continue
+		continuation_token = next_continuation_token;
+		continuation_token.is_some()
+	} {}
 
 	Ok(())
 }

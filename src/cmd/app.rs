@@ -1,4 +1,4 @@
-use clap::{crate_version, App, Arg};
+use clap::{crate_version, Arg, Command};
 
 pub const ARG_RECURSIVE: &str = "recursive";
 pub const ARG_PATH_1: &str = "path_1";
@@ -8,24 +8,24 @@ pub const ARG_EXCLUDE: &str = "exclude";
 pub const ARG_INCLUDE: &str = "include";
 pub const ARG_OVER: &str = "over";
 
-pub fn cmd_app() -> App<'static> {
-	App::new("ss3")
+pub fn cmd_app() -> Command<'static> {
+	Command::new("ss3")
 		.version(&crate_version!()[..])
 		.arg(arg_profile())
 		.subcommand(sub_ls())
 		.subcommand(sub_cp())
 }
 
-fn sub_ls() -> App<'static> {
-	App::new("ls")
+fn sub_ls() -> Command<'static> {
+	Command::new("ls")
 		.about("List from s3 url")
 		.arg(arg_profile())
 		.arg(arg_path_1())
 		.arg(arg_recursive())
 }
 
-fn sub_cp() -> App<'static> {
-	App::new("cp")
+fn sub_cp() -> Command<'static> {
+	Command::new("cp")
 		.about("Copy from s3 url / file path to s3 url / file path")
 		.arg(arg_profile())
 		.arg(arg_path_1())

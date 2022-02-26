@@ -1,5 +1,5 @@
 use aws_sdk_s3::error::{GetObjectError, HeadObjectError, ListObjectsV2Error, PutObjectError};
-use aws_sdk_s3::SdkError;
+use aws_sdk_s3::types::SdkError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

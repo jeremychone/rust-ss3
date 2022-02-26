@@ -1,7 +1,7 @@
 use super::s3_bucket::{SBucket, SItem};
 use super::{compute_dst_key, compute_dst_path, get_file_name, path_type, ListOptions, ListResult, PathType};
 use crate::Error;
-use aws_sdk_s3::ByteStream;
+use aws_sdk_s3::types::ByteStream;
 use globset::GlobSet;
 use std::collections::{HashSet, VecDeque};
 use std::fs::{create_dir_all, File};
@@ -152,38 +152,49 @@ impl SBucket {
 				let mut prefix_queue: VecDeque<SItem> = VecDeque::new();
 				prefix_queue.push_front(SItem::from_prefix_str(base_key));
 
-				// default options for the list(...) calls
-				// Note: For now, the list(...) does not do the recursive calls, but folder by folder
-				//       pros - assuming a folder does not have more than the fetch limit, it will scale well
-				//       cons - will require to make list request per folder if the donload_path is recursive
-				let list_opts = ListOptions::default();
-
 				// cheap optimization to not check parent dir all the time
 				let mut dir_exist_set: HashSet<String> = HashSet::new();
 
 				while let Some(prefix) = prefix_queue.pop_front() {
-					// get the objects and prefixes
-					let ListResult { prefixes, objects } = self.list(&prefix.key, &list_opts).await?;
+					let mut continuation_token: Option<String> = None;
 
-					// download the objects of this prefix
-					for item in objects.iter() {
-						let dst_file = compute_dst_path(base_key, &item.key, dst_path)?;
+					while {
+						// default options for the list(...) calls
+						// Note: For now, the list(...) does not do the recursive calls, but folder by folder
+						//       pros - assuming a folder does not have more than the fetch limit, it will scale well
+						//       cons - will require to make list request per folder if the donload_path is recursive
+						let list_opts = ListOptions::new(false, continuation_token);
 
-						if let Some(dst_file_parent) = dst_file.parent() {
-							let parent_dir_string = dst_file_parent.to_string_lossy();
-							if !dir_exist_set.contains(parent_dir_string.deref()) || !dst_file_parent.exists() {
-								create_dir_all(dst_file_parent)?;
-								dir_exist_set.insert(parent_dir_string.to_string());
+						// get the objects and prefixes
+						let ListResult {
+							prefixes,
+							objects,
+							next_continuation_token,
+						} = self.list(&prefix.key, &list_opts).await?;
+						// download the objects of this prefix
+						for item in objects.iter() {
+							let dst_file = compute_dst_path(base_key, &item.key, dst_path)?;
+
+							if let Some(dst_file_parent) = dst_file.parent() {
+								let parent_dir_string = dst_file_parent.to_string_lossy();
+								if !dir_exist_set.contains(parent_dir_string.deref()) || !dst_file_parent.exists() {
+									create_dir_all(dst_file_parent)?;
+									dir_exist_set.insert(parent_dir_string.to_string());
+								}
 							}
+
+							self.download_file(&item.key, &dst_file, &opts).await?;
 						}
 
-						self.download_file(&item.key, &dst_file, &opts).await?;
-					}
+						// if the download is recursive add those prefixes to the prefix_queue
+						if opts.recursive {
+							prefix_queue.extend(prefixes);
+						}
 
-					// if the download is recursive ass those prefixes to the prefix_queue
-					if opts.recursive {
-						prefix_queue.extend(prefixes);
-					}
+						// continuation if needed
+						continuation_token = next_continuation_token;
+						continuation_token.is_some()
+					} {}
 				}
 			}
 			// S3 dir to file (NOT supported)

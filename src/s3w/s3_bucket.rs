@@ -45,16 +45,23 @@ impl SItem {
 // region:    --- ListOptions
 pub struct ListOptions {
 	recursive: bool,
+	continuation_token: Option<String>,
 }
 impl Default for ListOptions {
 	fn default() -> Self {
-		Self { recursive: false }
+		Self {
+			recursive: false,
+			continuation_token: None,
+		}
 	}
 }
 
 impl ListOptions {
-	pub fn new(recursive: bool) -> ListOptions {
-		ListOptions { recursive }
+	pub fn new(recursive: bool, continuation_token: Option<String>) -> ListOptions {
+		ListOptions {
+			recursive,
+			continuation_token,
+		}
 	}
 }
 // endregion: --- ListOptions
@@ -63,6 +70,7 @@ impl ListOptions {
 pub struct ListResult {
 	pub prefixes: Vec<SItem>,
 	pub objects: Vec<SItem>,
+	pub next_continuation_token: Option<String>,
 }
 // endregion: --- ListResult
 
@@ -81,7 +89,12 @@ impl SBucket {
 impl SBucket {
 	pub async fn list(&self, prefix: &str, options: &ListOptions) -> Result<ListResult, Error> {
 		// BUILD - the aws S3 list request
-		let mut builder = self.client.list_objects_v2().prefix(prefix).bucket(&self.name);
+		let mut builder = self
+			.client
+			.list_objects_v2()
+			.prefix(prefix)
+			.bucket(&self.name)
+			.set_continuation_token(options.continuation_token.clone());
 
 		if !options.recursive {
 			builder = builder.delimiter("/");
@@ -100,8 +113,13 @@ impl SBucket {
 
 		// get the objects
 		let objects: Vec<SItem> = resp.contents().unwrap_or_default().into_iter().map(SItem::from_object).collect();
+		let next_continuation_token = resp.next_continuation_token().map(|t| t.to_string());
 
-		Ok(ListResult { prefixes, objects })
+		Ok(ListResult {
+			prefixes,
+			objects,
+			next_continuation_token,
+		})
 	}
 
 	pub async fn exists(&self, key: &str) -> bool {
