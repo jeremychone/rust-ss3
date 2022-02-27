@@ -155,15 +155,16 @@ impl SBucket {
 				// cheap optimization to not check parent dir all the time
 				let mut dir_exist_set: HashSet<String> = HashSet::new();
 
+				// Note: For now, the list(...) does not do the recursive calls, but folder by folder
+				//       pros - assuming a folder does not have more than the fetch limit, it will scale well
+				//       cons - will require to make list request per folder if the donload_path is recursive
+				let mut list_opts = ListOptions::new(false);
+
 				while let Some(prefix) = prefix_queue.pop_front() {
 					let mut continuation_token: Option<String> = None;
 
 					while {
-						// default options for the list(...) calls
-						// Note: For now, the list(...) does not do the recursive calls, but folder by folder
-						//       pros - assuming a folder does not have more than the fetch limit, it will scale well
-						//       cons - will require to make list request per folder if the donload_path is recursive
-						let list_opts = ListOptions::new(false, continuation_token);
+						list_opts.continuation_token = continuation_token;
 
 						// get the objects and prefixes
 						let ListResult {

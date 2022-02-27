@@ -22,6 +22,16 @@ fn sub_ls() -> Command<'static> {
 		.arg(arg_profile())
 		.arg(arg_path_1())
 		.arg(arg_recursive())
+		.arg(
+			Arg::new("info")
+				.long("info")
+				.help("Display the info of the listing at the end of the listing (total files, total size, total size per extension)"),
+		)
+		.arg(
+			Arg::new("info-only")
+				.long("info-only")
+				.help("Display only info of the listing (total files, total size, total size per extension)"),
+		)
 }
 
 fn sub_cp() -> Command<'static> {

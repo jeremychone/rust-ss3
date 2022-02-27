@@ -64,6 +64,9 @@ pub enum Error {
 	#[error("Fail mode is on and the file '{0}' already exits")]
 	FileExistsOverFailMode(String),
 
+	#[error("This command is not valid. Cause: {0}")]
+	ComamndInvalid(&'static str),
+
 	#[error(transparent)]
 	InvalidUri(#[from] http::uri::InvalidUri),
 

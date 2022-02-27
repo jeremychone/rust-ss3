@@ -1,8 +1,8 @@
 
 
-**Yet another S3 command-line**, but environment variables driven, even for per profile or bucket credentials. 
+**Yet another S3 command-line**, but environment variables driven, with per bucket (or per profile) credentials. 
 
-**NOTE:** **Experimental** `v0.0.2` is somewhat feature complete. 
+**NOTE:** **Experimental** `v0.0.5` is somewhat feature complete. 
 
 Key points:
 - Use the official [AWS-SDK-S3](https://crates.io/crates/aws-sdk-s3)
@@ -28,11 +28,20 @@ binst install ss3
 # list all object and prefixes (-r for recursive)
 ss3 ls s3://my-bucket -r
 
+# list all object and prefixes (--info to display total count & size, also per extensions)
+ss3 ls s3://my-bucket -r --info
+
 # Upload single file
 ss3 cp ./image-01.jpg s3://my-bucket/my-folder
 
 # Upload full folder
 ss3 cp ./ s3://my-bucket/my-folder/ -r
+
+# Upload full folder except the *.mp4
+ss3 cp ./ s3://my-bucket/my-folder/ -e "*.mp4" -r
+
+# Upload full folder but only the *.mp4 and *.jpg
+ss3 cp ./ s3://my-bucket/my-folder/ -i "*.mp4" -i "*.jpg" -r
 
 # Download single file to a local directory (parent dirs will be )
 ss3 cp s3://my-bucket/image-01.jpg ./.downloads/

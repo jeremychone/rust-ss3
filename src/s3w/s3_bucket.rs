@@ -13,15 +13,18 @@ pub enum SItemType {
 pub struct SItem {
 	pub typ: SItemType,
 	pub key: String,
+	pub size: i64,
 }
 
 // builders
 impl SItem {
 	pub fn from_object(obj: &Object) -> SItem {
 		let key = obj.key().unwrap_or_default().to_string();
+		let size = obj.size();
 		SItem {
 			key,
 			typ: SItemType::Object,
+			size,
 		}
 	}
 
@@ -30,6 +33,7 @@ impl SItem {
 		SItem {
 			key,
 			typ: SItemType::Prefix,
+			size: 0,
 		}
 	}
 
@@ -37,30 +41,38 @@ impl SItem {
 		SItem {
 			key: prefix.to_string(),
 			typ: SItemType::Prefix,
+			size: 0,
 		}
 	}
 }
 // endregion: --- S3Item
 
 // region:    --- ListOptions
+pub enum ListInfo {
+	WithInfo,
+	InfoOnly,
+}
+
 pub struct ListOptions {
-	recursive: bool,
-	continuation_token: Option<String>,
+	pub recursive: bool,
+	pub continuation_token: Option<String>,
+	pub info: Option<ListInfo>,
 }
 impl Default for ListOptions {
 	fn default() -> Self {
 		Self {
 			recursive: false,
 			continuation_token: None,
+			info: None,
 		}
 	}
 }
 
 impl ListOptions {
-	pub fn new(recursive: bool, continuation_token: Option<String>) -> ListOptions {
+	pub fn new(recursive: bool) -> ListOptions {
 		ListOptions {
 			recursive,
-			continuation_token,
+			..Default::default()
 		}
 	}
 }

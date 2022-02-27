@@ -14,7 +14,7 @@ mod s3_bucket;
 pub use self::cp::CpOptions;
 pub use self::cp::OverMode;
 pub use self::cred::get_sbucket;
-pub use self::s3_bucket::{ListOptions, ListResult};
+pub use self::s3_bucket::{ListInfo, ListOptions, ListResult};
 
 // region:    --- Mod Utils
 

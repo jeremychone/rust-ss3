@@ -11,7 +11,7 @@ pub use error::Error;
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
 	match cmd_run().await {
-		Ok(_) => println!("✔ All good and well"),
+		Ok(_) => (),
 		Err(e) => {
 			println!("Error:\n  {}", e)
 		}

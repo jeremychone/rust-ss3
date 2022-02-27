@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use self::app::{ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
-use crate::s3w::{get_sbucket, CpOptions, ListOptions, ListResult, OverMode};
+use crate::s3w::{get_sbucket, CpOptions, ListInfo, ListOptions, ListResult, OverMode};
 use crate::spath::SPath;
 use crate::Error;
 use clap::ArgMatches;
+use file_size::fit_4;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 
 mod app;
@@ -39,14 +42,25 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 
 	// build the bucket
 	let bucket = get_sbucket(profile, s3_url.bucket()).await?;
-	let recursive = argm.is_present(ARG_RECURSIVE);
 
-	// next continuation token
+	// build the option (take ownership of the continuation_token)
+	let mut options = ListOptions::from_argm(argm)?;
+
+	let mut total_objects: i64 = 0;
+	let mut total_size: i64 = 0;
+	type Size = i64;
+	type Count = i64;
+	let mut size_per_ext: HashMap<String, (Size, Count)> = HashMap::new();
+
+	// next continuation token (starts with none for the first request)
 	let mut continuation_token: Option<String> = None;
+	let show_list = match options.info {
+		None | Some(ListInfo::WithInfo) => true,
+		_ => false,
+	};
 
 	while {
-		// build the option (take ownershipt of the continuation_token)
-		let options = ListOptions::new(recursive, continuation_token.clone());
+		options.continuation_token = continuation_token;
 
 		// execute the list
 		let ListResult {
@@ -60,15 +74,40 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 		for item in prefixes.iter() {
 			println!("{}", item.key);
 		}
+
 		// Print objects
 		for item in objects.iter() {
-			println!("{}", item.key);
+			total_objects += 1;
+			total_size += item.size;
+			if let Some(ext_idx) = item.key.rfind(".") {
+				let ext = &item.key[ext_idx..];
+				let val = size_per_ext.entry(ext.to_string()).or_insert((0, 0));
+				val.0 += item.size;
+				val.1 += 1;
+			}
+
+			if show_list {
+				println!("{}", item.key);
+			}
 		}
 
 		// -- Condition to continue
 		continuation_token = next_continuation_token;
 		continuation_token.is_some()
-	} {}
+	} {} // this is the way to do `do while` in rust
+
+	if let Some(ListInfo::InfoOnly | ListInfo::WithInfo) = options.info {
+		println!("\n--- Info:");
+		let mut exts: Vec<(&String, &(Size, Count))> = size_per_ext.iter().map(|e| (e.0, e.1)).collect();
+		exts.sort_by(|a, b| a.0.cmp(b.0));
+		for (ext, (size, count)) in exts.into_iter() {
+			println!("{ext:<5} - size: {:<5} count: {count} ", fit_4(*size as u64))
+		}
+
+		println!("");
+		let total_size_fit_4 = fit_4(total_size as u64);
+		println!("total size: {total_size_fit_4:5} total count: {total_objects} ");
+	}
 
 	Ok(())
 }
@@ -77,7 +116,7 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 	let url_1 = get_path_1(argm)?;
 	let url_2 = get_path_2(argm)?;
 
-	let opts = CpOptions::from_args(argm);
+	let opts = CpOptions::from_argm(argm);
 
 	match (url_1, url_2) {
 		// DOWNLOAD
@@ -127,9 +166,33 @@ fn get_path_2(argm: &ArgMatches) -> Result<SPath, Error> {
 }
 // endregion: Args Utils
 
+// region:    --- ListOptions Builder
+impl ListOptions {
+	fn from_argm(argm: &ArgMatches) -> Result<ListOptions, Error> {
+		let recursive = argm.is_present(ARG_RECURSIVE);
+		let info = match (argm.is_present("info"), argm.is_present("info-only")) {
+			// --info
+			(true, false) => Ok(Some(ListInfo::WithInfo)),
+			// --info-only
+			(false, true) => Ok(Some(ListInfo::InfoOnly)),
+			// no info
+			(false, false) => Ok(None),
+			// both, error!
+			(true, true) => Err(Error::ComamndInvalid("Cannot have '--info' and '--info-only' at the same time")),
+		}?;
+
+		Ok(ListOptions {
+			recursive,
+			info,
+			..Default::default()
+		})
+	}
+}
+// endregion: --- ListOptions Builder
+
 // region:    --- CpOptions Builder
 impl CpOptions {
-	fn from_args(argm: &ArgMatches) -> CpOptions {
+	fn from_argm(argm: &ArgMatches) -> CpOptions {
 		// extract recursive flag
 		let recursive = argm.is_present(ARG_RECURSIVE);
 
