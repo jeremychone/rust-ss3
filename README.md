@@ -1,16 +1,16 @@
 
 
-**Yet another S3 command-line**, but environment variables driven, with per bucket (or per profile) credentials. 
+**Yet another S3 command-line**, but environment variables are driven for per bucket or profile credentials. 
 
 **NOTE:** **Experimental** `v0.0.5` is somewhat feature complete. 
 
 Key points:
-- Use the official [AWS-SDK-S3](https://crates.io/crates/aws-sdk-s3)
-- Environment variables driven
+- Uses the official [AWS-SDK-S3](https://crates.io/crates/aws-sdk-s3) library.
+- Environment variables driven credentials (per bucket, per profile, fallback to AWS CLI defaults).
 - Will mimic most of the official `aws s3 ...` command line (however, does not intend to be too dogmatic)
 - Will eventually provide a lib as well. 
 
-> Note: Tested on Mac and Linux (might not work on Windows for now)
+> Note: Tested on Mac and Linux (might not work on Windows, for now, contribution welcome)
 
 ## Install
 
@@ -43,7 +43,7 @@ ss3 cp ./ s3://my-bucket/my-folder/ -e "*.mp4" -r
 # Upload full folder but only the *.mp4 and *.jpg
 ss3 cp ./ s3://my-bucket/my-folder/ -i "*.mp4" -i "*.jpg" -r
 
-# Download single file to a local directory (parent dirs will be )
+# Download a single file to a local directory (parent dirs will be )
 ss3 cp s3://my-bucket/image-01.jpg ./.downloads/
 
 # Download a full folder (for now make sure to add end '/' in the s3 URL to distinguish from object)
@@ -70,5 +70,42 @@ Here is the order in which the credentials will be resolved:
     - `AWS_SECRET_ACCESS_KEY`
     - `AWS_DEFAULT_REGION`
 
-> NOTE: '-' characters in profile and bucket names will be replaced by '_' for environment names above.
+> NOTE: '-' characters in profile and bucket names will be replaced by '_' for environment names above. So a bucket name `my-bucket-001` will map to the environment variable `SS3_BUCKET_my_bucket_001_KEY_ID` ...
 
+## Other Examples
+
+```sh
+
+# ls
+ss3 ls s3://my-bucket
+
+# UPLOAD - cp file to s3 dir
+ss3 cp ./.test-data/to-upload/image-01.jpg s3://my-bucket
+
+# UPLOAD - cp dir to s3 dir
+ss3 cp ./.test-data/to-upload/ s3://my-bucket -r
+
+# LIST - recursive
+ss3 ls s3://my-bucket -r --info
+
+# UPLOAD - rename
+ss3 cp ./.test-data/to-upload/image-01.jpg s3://my-bucket/image-01-renamed.jpg
+
+# UPLOAD - excludes
+ss3 cp .test-data/to-upload s3://my-bucket -r -e "*.txt" --exclude "*.jpg"
+
+# UPLOAD - includes
+ss3 cp .test-data/to-upload s3://my-bucket -r -i "*.txt"
+
+# UPLOAD - cp dir to s3 (recursive)
+ss3 cp ./.test-data/to-upload/ s3://my-bucket/ggg -r
+
+# DOWNLOAD - cp s3 file to local dir 
+ss3 cp s3://my-bucket/image-01.jpg ./.test-data/downloads/
+
+# DOWNLOAD - cp s3 file to local file (rename)
+ss3 cp s3://my-bucket/image-01.jpg ./.test-data/downloads/image-01-rename.jpg
+
+# DOWNLOAD - cp s3 folder to local dir
+ss3 cp s3://my-bucket/ ./.test-data/downloads/
+```

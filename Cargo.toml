@@ -1,6 +1,6 @@
 [package]
 name = "ss3"
-version = "0.0.5"
+version = "0.0.6-SNAPSHOT"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -9,7 +9,8 @@ categories = ["command-line-interface"]
 keywords = [
 	"cli",
 	"aws",
-	"s3"
+	"s3",
+	"cloud"
 ]
 homepage = "https://github.com/jeremychone/rust-ss3"
 repository = "https://github.com/jeremychone/rust-ss3"
@@ -29,9 +30,9 @@ mime_guess = "2"
 tokio-stream = "0.1"
 file-size = "1"
 # Aws libs
-aws-config = "0.8"
-aws-sdk-s3 = "0.8"
-aws-types = "0.8"
-aws-smithy-http = "0.38"
+aws-config = "0.12"
+aws-sdk-s3 = "0.12"
+aws-types = "0.12"
+aws-smithy-http = "0.42"
 http = "0.2"
 
