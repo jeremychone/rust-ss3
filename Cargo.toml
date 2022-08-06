@@ -1,6 +1,6 @@
 [package]
 name = "ss3"
-version = "0.0.6"
+version = "0.0.7"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -30,9 +30,10 @@ mime_guess = "2"
 tokio-stream = "0.1"
 file-size = "1"
 # Aws libs
-aws-config = "0.12"
-aws-sdk-s3 = "0.12"
-aws-types = "0.12"
-aws-smithy-http = "0.42"
+# Note - Make sure the "0.46" deb are in sync, otherwise, get weird compile error about duplicates. 
+aws-sdk-s3 = "0.16"
+aws-config = "0.46"
+aws-types = "0.46"
+aws-smithy-http = "0.46"
 http = "0.2"
 

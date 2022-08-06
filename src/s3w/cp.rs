@@ -88,8 +88,6 @@ impl SBucket {
 						let mime_type = mime_guess::from_path(src_file).first_or_octet_stream().to_string();
 						let body = ByteStream::from_path(&src_file).await?;
 
-						self.exists(key).await;
-
 						println!(
 							"{:15} {:50} --> {}   (content-type: {})",
 							"Uploading",

@@ -67,6 +67,7 @@ fn arg_recursive() -> Arg<'static> {
 fn arg_profile() -> Arg<'static> {
 	Arg::new(ARG_PROFILE)
 		.short('p')
+		.long("profile")
 		.takes_value(true)
 		.help("The profile to use if no bucket environment credentials.")
 }

@@ -17,3 +17,15 @@ async fn main() {
 		}
 	};
 }
+
+pub use std::format as f;
+
+#[macro_export]
+macro_rules! s {
+	() => {
+		String::new()
+	};
+	($x:expr $(,)?) => {
+		ToString::to_string(&$x)
+	};
+}
