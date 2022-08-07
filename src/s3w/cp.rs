@@ -75,9 +75,16 @@ impl SBucket {
 
 	/// Lower level function that upload a single file to a fully resolved key
 	async fn upload_file(&self, src_file: &Path, key: &str, opts: &CpOptions) -> Result<(), Error> {
-		// Make sure it is a file
+		// --- Make sure it is a file
 		if !src_file.is_file() {
-			panic!("sbucket.upload_file should only get a file object. Code error.");
+			panic!("CODE-ERROR - sbucket.upload_file should only get a file object. Code error.");
+		}
+
+		if let Some(file_name) = src_file.file_name().and_then(|f| f.to_str()) {
+			if self.default_ignore_upload_names.contains(file_name) {
+				println!("{:20} {file_name}", "Skip (by default)");
+				return Ok(());
+			}
 		}
 
 		if let Some(src_file_str) = src_file.to_str() {
@@ -89,7 +96,7 @@ impl SBucket {
 						let body = ByteStream::from_path(&src_file).await?;
 
 						println!(
-							"{:15} {:50} --> {}   (content-type: {})",
+							"{:20} {:50} --> {}   (content-type: {})",
 							"Uploading",
 							src_file.display(),
 							self.s3_url(key),
@@ -108,10 +115,10 @@ impl SBucket {
 						// EXECUTE - aws request
 						builder.send().await?;
 					} else {
-						println!("{:15} {}", "Skip (exists)", self.s3_url(key));
+						println!("{:20} {}", "Skip (exists)", self.s3_url(key));
 					}
 				}
-				Inex::ExcludeInExclude => println!("{:15} {src_file_str}", "Excludes"),
+				Inex::ExcludeInExclude => println!("{:20} {src_file_str}", "Excludes"),
 				// if exclude because not in include, then, quiet
 				Inex::ExcludeNotInInclude => (),
 			}
@@ -254,7 +261,7 @@ fn validate_inex_rules(path: &str, opts: &CpOptions) -> Inex {
 	let match_exclude = opts.excludes.as_ref().map(|gs| gs.matches(path).len() > 0);
 
 	match (match_include, match_exclude) {
-		// if passe the include gate (no include rule or matched it) and not in eventual exclude
+		// if pass the include gate (no include rule or matched it) and not in eventual exclude
 		(None | Some(true), None | Some(false)) => Inex::Include,
 		// passed the include gate, but is explicity excluded
 		(None | Some(true), Some(true)) => Inex::ExcludeInExclude,

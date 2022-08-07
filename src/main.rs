@@ -2,10 +2,12 @@
 use cmd::cmd_run;
 
 mod cmd;
+mod consts;
 mod error;
 mod s3w;
 mod spath;
 
+pub use consts::*;
 pub use error::Error;
 
 #[tokio::main(flavor = "current_thread")]

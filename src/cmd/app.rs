@@ -51,7 +51,7 @@ fn sub_cp() -> Command<'static> {
 		)
 }
 
-// region:    Common Args
+// region:    --- Common Args
 fn arg_path_1() -> Arg<'static> {
 	Arg::new(ARG_PATH_1).required(true).help("The first path to apply the action from.")
 }
@@ -71,7 +71,7 @@ fn arg_profile() -> Arg<'static> {
 		.takes_value(true)
 		.help("The profile to use if no bucket environment credentials.")
 }
-// endregion: Common Args
+// endregion: --- Common Args
 
 // region:    --- cp Args
 fn arg_exlude() -> Arg<'static> {
