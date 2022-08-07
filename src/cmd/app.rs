@@ -71,7 +71,9 @@ fn arg_profile() -> Arg<'static> {
 		.takes_value(true)
 		.help("The profile to use if no bucket environment credentials.")
 }
+// endregion: Common Args
 
+// region:    --- cp Args
 fn arg_exlude() -> Arg<'static> {
 	Arg::new(ARG_EXCLUDE)
 		.short('e')
@@ -89,4 +91,4 @@ fn arg_include() -> Arg<'static> {
 		.multiple_occurrences(true)
 		.help("Only process the item that match the glob expression.")
 }
-// endregion: Common Args
+// endregion: --- cp Args
