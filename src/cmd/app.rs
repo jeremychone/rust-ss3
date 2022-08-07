@@ -6,6 +6,7 @@ pub const ARG_PATH_2: &str = "path_2";
 pub const ARG_PROFILE: &str = "profile";
 pub const ARG_EXCLUDE: &str = "exclude";
 pub const ARG_INCLUDE: &str = "include";
+pub const ARG_NOEXT_CT: &str = "noext-ct";
 pub const ARG_OVER: &str = "over";
 
 pub fn cmd_app() -> Command<'static> {
@@ -43,6 +44,7 @@ fn sub_cp() -> Command<'static> {
 		.arg(arg_include())
 		.arg(arg_exlude())
 		.arg(arg_recursive())
+		.arg(arg_noext_ct())
 		.arg(
 			Arg::new(ARG_OVER)
 				.long("over")
@@ -86,9 +88,18 @@ fn arg_exlude() -> Arg<'static> {
 fn arg_include() -> Arg<'static> {
 	Arg::new(ARG_INCLUDE)
 		.short('i')
-		.long("include")
+		.long(ARG_INCLUDE)
 		.takes_value(true)
 		.multiple_occurrences(true)
 		.help("Only process the item that match the glob expression.")
 }
+
+fn arg_noext_ct() -> Arg<'static> {
+	Arg::new(ARG_NOEXT_CT)
+		.long(ARG_NOEXT_CT)
+		.takes_value(true)
+		.multiple_occurrences(true)
+		.help("Content-Type when no file extension. e.g., --noext-ct 'html' (alias for 'text/html; charset=UTF-8')")
+}
+
 // endregion: --- cp Args

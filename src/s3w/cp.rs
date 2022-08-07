@@ -1,6 +1,6 @@
 use super::s3_bucket::{SBucket, SItem};
 use super::{compute_dst_key, compute_dst_path, get_file_name, path_type, ListOptions, ListResult, PathType};
-use crate::Error;
+use crate::{s, Error};
 use aws_sdk_s3::types::ByteStream;
 use globset::GlobSet;
 use std::collections::{HashSet, VecDeque};
@@ -28,6 +28,8 @@ pub struct CpOptions {
 	pub excludes: Option<GlobSet>,
 	pub includes: Option<GlobSet>,
 	pub over: OverMode,
+	/// File with no extension content type
+	pub noext_ct: Option<String>,
 }
 
 impl Default for CpOptions {
@@ -37,6 +39,7 @@ impl Default for CpOptions {
 			excludes: None,
 			includes: None,
 			over: OverMode::default(),
+			noext_ct: None,
 		}
 	}
 }
@@ -80,8 +83,8 @@ impl SBucket {
 			panic!("CODE-ERROR - sbucket.upload_file should only get a file object. Code error.");
 		}
 
-		if let Some(file_name) = src_file.file_name().and_then(|f| f.to_str()) {
-			if self.default_ignore_upload_names.contains(file_name) {
+		if let (Some(file_name), Some(ignore_set)) = (src_file.file_name().and_then(|f| f.to_str()), &self.default_ignore_upload_names) {
+			if ignore_set.contains(file_name) {
 				println!("{:20} {file_name}", "Skip (by default)");
 				return Ok(());
 			}
@@ -92,7 +95,10 @@ impl SBucket {
 				Inex::Include => {
 					if validate_over_for_s3_dest(self, key, &opts).await? {
 						// BUILD - the src file info
-						let mime_type = mime_guess::from_path(src_file).first_or_octet_stream().to_string();
+						let mime_type = match (&opts.noext_ct, src_file.extension()) {
+							(Some(noext_ct), None) => s!(noext_ct),
+							_ => mime_guess::from_path(src_file).first_or_octet_stream().to_string(),
+						};
 						let body = ByteStream::from_path(&src_file).await?;
 
 						println!(

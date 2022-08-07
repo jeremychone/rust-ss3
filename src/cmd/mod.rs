@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use self::app::{ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
+use self::app::{ARG_NOEXT_CT, ARG_OVER, ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
 use crate::s3w::{get_sbucket, CpOptions, ListInfo, ListOptions, ListResult, OverMode};
 use crate::spath::SPath;
-use crate::Error;
+use crate::{s, Error, CT_HTML, CT_TEXT};
 use clap::ArgMatches;
 use file_size::fit_4;
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -201,7 +201,7 @@ impl CpOptions {
 		let includes = build_glob_set(argm, "include");
 
 		// extract the over mode
-		let over = match argm.value_of("over") {
+		let over = match argm.value_of(ARG_OVER) {
 			Some("write") => OverMode::Write,
 			Some("skip") => OverMode::Skip,
 			Some("fail") => OverMode::Fail,
@@ -209,12 +209,19 @@ impl CpOptions {
 			None => OverMode::default(),
 		};
 
+		let noext_ct = argm.value_of(ARG_NOEXT_CT).map(|v| match v {
+			"html" => s!(CT_HTML),
+			"text" => s!(CT_TEXT),
+			_ => s!(v),
+		});
+
 		// build the options
 		CpOptions {
 			recursive,
 			excludes,
 			includes,
 			over,
+			noext_ct,
 		}
 	}
 }

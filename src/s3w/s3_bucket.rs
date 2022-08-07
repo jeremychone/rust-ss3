@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{Error, DEFAULT_UPLOAD_IGNORE_FILES};
+use crate::Error;
 use aws_sdk_s3::model::{CommonPrefix, Object};
 use aws_sdk_s3::Client;
 
@@ -89,19 +89,22 @@ pub struct ListResult {
 // endregion: --- ListResult
 
 // region:    S3Bucket
+pub struct SBucketConfig {
+	pub default_ignore_upload_names: Option<HashSet<String>>,
+}
+
 pub struct SBucket {
 	pub client: Client,
 	pub name: String,
-	pub default_ignore_upload_names: HashSet<String>,
+	pub default_ignore_upload_names: Option<HashSet<String>>,
 }
 
 impl SBucket {
-	pub fn from_client_and_name(client: Client, name: String) -> SBucket {
-		let default_ignore_files = HashSet::from_iter(DEFAULT_UPLOAD_IGNORE_FILES.map(String::from));
+	pub fn from_client_and_name(client: Client, name: String, config: Option<SBucketConfig>) -> SBucket {
 		SBucket {
 			client,
 			name,
-			default_ignore_upload_names: default_ignore_files,
+			default_ignore_upload_names: config.and_then(|d| d.default_ignore_upload_names),
 		}
 	}
 }

@@ -1,14 +1,16 @@
-use crate::Error;
+use crate::{Error, DEFAULT_UPLOAD_IGNORE_FILES};
 use aws_config::profile::Profile;
 use aws_sdk_s3::config::Builder;
 use aws_sdk_s3::{Client, Credentials, Endpoint, Region};
 use aws_types::credentials::SharedCredentialsProvider;
 use aws_types::os_shim_internal::{Env, Fs};
 use http::Uri;
+use std::collections::HashSet;
 use std::env;
 use std::str::FromStr;
 
 use super::s3_bucket::SBucket;
+use super::SBucketConfig;
 
 // Default AWS environement names (used as last fallback)
 const AWS_ACCESS_KEY_ID: &str = "AWS_ACCESS_KEY_ID";
@@ -57,7 +59,11 @@ impl EnvType {
 
 pub async fn get_sbucket(profile: Option<&str>, bucket: &str) -> Result<SBucket, Error> {
 	let client = new_s3_client(profile, bucket).await?;
-	let sbucket = SBucket::from_client_and_name(client, bucket.to_string());
+	let default_ignore_files = HashSet::from_iter(DEFAULT_UPLOAD_IGNORE_FILES.map(String::from));
+	let config = SBucketConfig {
+		default_ignore_upload_names: Some(default_ignore_files),
+	};
+	let sbucket = SBucket::from_client_and_name(client, bucket.to_string(), Some(config));
 
 	Ok(sbucket)
 }
