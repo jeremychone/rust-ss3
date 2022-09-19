@@ -34,8 +34,12 @@ ss3 ls s3://my-bucket -r --info
 # Upload single file
 ss3 cp ./image-01.jpg s3://my-bucket/my-folder
 
-# Upload full folder
+# Upload full folder (recursive)
 ss3 cp ./ s3://my-bucket/my-folder/ -r
+
+# Upload full folder with "text/html" content-type for file without extension 
+# (rather than fall back "application/octet-stream")
+ss3 cp ./ s3://my-bucket/my-folder/ -r --noext-ct "text/html"
 
 # Upload full folder except the *.mp4
 ss3 cp ./ s3://my-bucket/my-folder/ -e "*.mp4" -r

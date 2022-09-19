@@ -5,7 +5,7 @@ authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Yet another S3 command line utilities... but env driven, per bucket."
-categories = ["command-line-interface"]
+categories = ["command-line-utilities"]
 keywords = [
 	"cli",
 	"aws",
@@ -31,9 +31,9 @@ tokio-stream = "0.1"
 file-size = "1"
 # Aws libs
 # Note - Make sure the "0.46" deb are in sync, otherwise, get weird compile error about duplicates. 
-aws-sdk-s3 = "0.16"
-aws-config = "0.46"
-aws-types = "0.46"
-aws-smithy-http = "0.46"
+aws-sdk-s3 = "0.18"
+aws-config = "0.48"
+aws-types = "0.48"
+aws-smithy-http = "0.48"
 http = "0.2"
 
