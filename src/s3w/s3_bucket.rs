@@ -55,19 +55,11 @@ pub enum ListInfo {
 	InfoOnly,
 }
 
+#[derive(Default)]
 pub struct ListOptions {
-	pub recursive: bool,
+	pub recursive: bool, // default will be false by Default
 	pub continuation_token: Option<String>,
 	pub info: Option<ListInfo>,
-}
-impl Default for ListOptions {
-	fn default() -> Self {
-		Self {
-			recursive: false,
-			continuation_token: None,
-			info: None,
-		}
-	}
 }
 
 impl ListOptions {
@@ -127,15 +119,10 @@ impl SBucket {
 		let resp = builder.send().await?;
 
 		// get the prefixes
-		let prefixes: Vec<SItem> = resp
-			.common_prefixes()
-			.unwrap_or_default()
-			.into_iter()
-			.map(SItem::from_prefix)
-			.collect();
+		let prefixes: Vec<SItem> = resp.common_prefixes().unwrap_or_default().iter().map(SItem::from_prefix).collect();
 
 		// get the objects
-		let objects: Vec<SItem> = resp.contents().unwrap_or_default().into_iter().map(SItem::from_object).collect();
+		let objects: Vec<SItem> = resp.contents().unwrap_or_default().iter().map(SItem::from_object).collect();
 		let next_continuation_token = resp.next_continuation_token().map(|t| t.to_string());
 
 		Ok(ListResult {

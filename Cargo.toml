@@ -1,6 +1,6 @@
 [package]
 name = "ss3"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -19,7 +19,7 @@ repository = "https://github.com/jeremychone/rust-ss3"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-clap =  {version = "3", features = ["cargo"]}
+clap =  {version = "4", features = ["cargo"]}
 thiserror = "1"
 regex = "1"
 globset = "0.4"
@@ -30,10 +30,9 @@ mime_guess = "2"
 tokio-stream = "0.1"
 file-size = "1"
 # Aws libs
-# Note - Make sure the "0.46" deb are in sync, otherwise, get weird compile error about duplicates. 
-aws-sdk-s3 = "0.18"
-aws-config = "0.48"
-aws-types = "0.48"
-aws-smithy-http = "0.48"
+aws-sdk-s3 = "0.21"
+aws-config = "0.51"
+aws-types = "0.51"
+aws-smithy-http = "0.51"
 http = "0.2"
 

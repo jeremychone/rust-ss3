@@ -23,6 +23,7 @@ impl Default for OverMode {
 	}
 }
 
+#[derive(Default)]
 pub struct CpOptions {
 	pub recursive: bool,
 	pub excludes: Option<GlobSet>,
@@ -30,18 +31,6 @@ pub struct CpOptions {
 	pub over: OverMode,
 	/// File with no extension content type
 	pub noext_ct: Option<String>,
-}
-
-impl Default for CpOptions {
-	fn default() -> Self {
-		Self {
-			recursive: false,
-			excludes: None,
-			includes: None,
-			over: OverMode::default(),
-			noext_ct: None,
-		}
-	}
 }
 
 /// "cp upload" Implementation
@@ -93,7 +82,7 @@ impl SBucket {
 		if let Some(src_file_str) = src_file.to_str() {
 			match validate_inex_rules(key, opts) {
 				Inex::Include => {
-					if validate_over_for_s3_dest(self, key, &opts).await? {
+					if validate_over_for_s3_dest(self, key, opts).await? {
 						// BUILD - the src file info
 						let mime_type = match (&opts.noext_ct, src_file.extension()) {
 							(Some(noext_ct), None) => s!(noext_ct),
@@ -236,7 +225,7 @@ impl SBucket {
 					let file = File::create(dst_file)?;
 					let mut buf_writer = BufWriter::new(file);
 					while let Some(bytes) = data.try_next().await? {
-						buf_writer.write(&bytes)?;
+						buf_writer.write_all(&bytes)?;
 					}
 					buf_writer.flush()?;
 				} else {
@@ -263,8 +252,8 @@ enum Inex {
 /// validate the Include / Exclusion rules
 fn validate_inex_rules(path: &str, opts: &CpOptions) -> Inex {
 	// Note: Those match_... will have 3 states, None (if no rule), Some(true), Some(false)
-	let match_include = opts.includes.as_ref().map(|gs| gs.matches(path).len() > 0);
-	let match_exclude = opts.excludes.as_ref().map(|gs| gs.matches(path).len() > 0);
+	let match_include = opts.includes.as_ref().map(|gs| !gs.matches(path).is_empty());
+	let match_exclude = opts.excludes.as_ref().map(|gs| !gs.matches(path).is_empty());
 
 	match (match_include, match_exclude) {
 		// if pass the include gate (no include rule or matched it) and not in eventual exclude

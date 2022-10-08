@@ -34,13 +34,7 @@ fn compute_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str, r
 			src_file.extension().and_then(|ext| ext.to_str().map(|v| v.to_lowercase())),
 			dst_path.extension().and_then(|ext| ext.to_str().map(|v| v.to_lowercase())),
 		) {
-			(Some(src_ext), Some(dst_ext)) => {
-				if src_ext == dst_ext {
-					true
-				} else {
-					false
-				}
-			}
+			(Some(src_ext), Some(dst_ext)) => src_ext == dst_ext,
 			(_, _) => false,
 		}
 	} else {

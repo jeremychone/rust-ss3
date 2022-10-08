@@ -1,4 +1,5 @@
 use crate::{Error, DEFAULT_UPLOAD_IGNORE_FILES};
+use aws_config::profile::profile_file::ProfileFiles;
 use aws_config::profile::Profile;
 use aws_sdk_s3::config::Builder;
 use aws_sdk_s3::{Client, Credentials, Endpoint, Region};
@@ -108,13 +109,13 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 /// Load the AwsCred from
 /// - First check if SS3_BUCKET_... envs
 /// - If not, if Profile,
-/// 	- first try the SS3_PROFILE_... envs,
-///   - then try standard aws config files
-/// 	- if still not found, error
+///    - first try the SS3_PROFILE_... envs,
+///    - then try standard aws config files
+///    - if still not found, error
 /// - if no profile,
-/// 	- try SS3_BUCKET_... envs
-/// 	- try the default AWS env keys
-/// 	- if still not found, error
+///    - try SS3_BUCKET_... envs
+///    - try the default AWS env keys
+///    - if still not found, error
 async fn load_aws_cred(profile: Option<&str>, bucket: &str) -> Result<AwsCred, Error> {
 	// first, try to get it from the SS3_BUCKET_bucket_name_KEY_ID, ... environments
 	let mut cred_result = load_aws_cred_from_ss3_bucket_env(bucket).await;
@@ -179,7 +180,7 @@ async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred, Er
 
 async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<AwsCred, Error> {
 	let (fs, ev) = (Fs::real(), Env::default());
-	let profiles = aws_config::profile::load(&fs, &ev).await;
+	let profiles = aws_config::profile::load(&fs, &ev, &ProfileFiles::default()).await;
 	if let Ok(profiles) = profiles {
 		if let Some(profile) = profiles.get_profile(profile_str) {
 			let key_id = get_profile_value(profile, "aws_access_key_id")?;
@@ -213,7 +214,7 @@ async fn load_aws_cred_from_default_aws_env() -> Result<AwsCred, Error> {
 
 // region:    Utils
 fn get_env_name(typ: EnvType, key: CredKey, name: &str) -> String {
-	let name = name.replace("-", "_");
+	let name = name.replace('-', "_");
 	format!("{}_{}_{}", typ.env_part(), name, key.env_part())
 }
 
@@ -226,7 +227,7 @@ fn get_profile_value(profile: &Profile, key: &str) -> Result<String, Error> {
 
 fn get_env(name: &str) -> Result<String, Error> {
 	match env::var(name) {
-		Ok(v) => Ok(v.to_string()),
+		Ok(v) => Ok(v),
 		Err(_) => Err(Error::NoCredentialEnv(name.to_string())),
 	}
 }

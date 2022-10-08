@@ -15,10 +15,13 @@ pub async fn cmd_run() -> Result<(), Error> {
 	let argm = cmd_app().get_matches();
 
 	// get the dir from the root command or sub command
-	let profile = argm.value_of("profile").or_else(|| match &argm.subcommand() {
-		Some((_, sub)) => sub.value_of("profile"),
-		_ => None,
-	});
+	let profile = argm
+		.get_one::<String>("profile")
+		.or_else(|| match &argm.subcommand() {
+			Some((_, sub)) => sub.get_one::<String>("profile"),
+			_ => None,
+		})
+		.map(String::as_str);
 
 	match argm.subcommand() {
 		Some(("ls", sub_cmd)) => exec_ls(profile, sub_cmd).await?,
@@ -54,10 +57,7 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 
 	// next continuation token (starts with none for the first request)
 	let mut continuation_token: Option<String> = None;
-	let show_list = match options.info {
-		None | Some(ListInfo::WithInfo) => true,
-		_ => false,
-	};
+	let show_list = matches!(options.info, None | Some(ListInfo::WithInfo));
 
 	while {
 		options.continuation_token = continuation_token;
@@ -79,7 +79,7 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 		for item in objects.iter() {
 			total_objects += 1;
 			total_size += item.size;
-			if let Some(ext_idx) = item.key.rfind(".") {
+			if let Some(ext_idx) = item.key.rfind('.') {
 				let ext = &item.key[ext_idx..];
 				let val = size_per_ext.entry(ext.to_string()).or_insert((0, 0));
 				val.0 += item.size;
@@ -104,7 +104,7 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 			println!("{ext:<5} - size: {:<5} count: {count} ", fit_4(*size as u64))
 		}
 
-		println!("");
+		println!();
 		let total_size_fit_4 = fit_4(total_size as u64);
 		println!("total size: {total_size_fit_4:5} total count: {total_objects} ");
 	}
@@ -151,26 +151,26 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 // region:    Args Utils
 fn get_path_1(argm: &ArgMatches) -> Result<SPath, Error> {
 	let path = argm
-		.value_of(ARG_PATH_1)
+		.get_one::<String>(ARG_PATH_1)
 		.ok_or(Error::CmdInvalid("This command requires a S3 url or file path"))?;
 
-	Ok(SPath::from_str(path)?)
+	SPath::from_str(path)
 }
 
 fn get_path_2(argm: &ArgMatches) -> Result<SPath, Error> {
 	let path = argm
-		.value_of(ARG_PATH_2)
+		.get_one::<String>(ARG_PATH_2)
 		.ok_or(Error::CmdInvalid("This command require a second S3 url or file path"))?;
 
-	Ok(SPath::from_str(path)?)
+	SPath::from_str(path)
 }
 // endregion: Args Utils
 
 // region:    --- ListOptions Builder
 impl ListOptions {
 	fn from_argm(argm: &ArgMatches) -> Result<ListOptions, Error> {
-		let recursive = argm.is_present(ARG_RECURSIVE);
-		let info = match (argm.is_present("info"), argm.is_present("info-only")) {
+		let recursive = argm.get_flag(ARG_RECURSIVE);
+		let info = match (argm.get_flag("info"), argm.get_flag("info-only")) {
 			// --info
 			(true, false) => Ok(Some(ListInfo::WithInfo)),
 			// --info-only
@@ -194,14 +194,14 @@ impl ListOptions {
 impl CpOptions {
 	fn from_argm(argm: &ArgMatches) -> CpOptions {
 		// extract recursive flag
-		let recursive = argm.is_present(ARG_RECURSIVE);
+		let recursive = argm.get_flag(ARG_RECURSIVE);
 
 		// extract the eventual strings
 		let excludes = build_glob_set(argm, "exclude");
 		let includes = build_glob_set(argm, "include");
 
 		// extract the over mode
-		let over = match argm.value_of(ARG_OVER) {
+		let over = match argm.get_one::<String>(ARG_OVER).map(|v| v.as_str()) {
 			Some("write") => OverMode::Write,
 			Some("skip") => OverMode::Skip,
 			Some("fail") => OverMode::Fail,
@@ -209,7 +209,7 @@ impl CpOptions {
 			None => OverMode::default(),
 		};
 
-		let noext_ct = argm.value_of(ARG_NOEXT_CT).map(|v| match v {
+		let noext_ct = argm.get_one::<String>(ARG_NOEXT_CT).map(|v| match v.as_str() {
 			"html" => s!(CT_HTML),
 			"text" => s!(CT_TEXT),
 			_ => s!(v),
@@ -227,7 +227,7 @@ impl CpOptions {
 }
 
 fn build_glob_set(argm: &ArgMatches, name: &str) -> Option<GlobSet> {
-	let globs: Option<Vec<&str>> = argm.values_of(name).map(|vs| vs.map(|v| v).collect());
+	let globs = argm.get_many::<String>(name).map(|vals| vals.collect::<Vec<_>>());
 	globs.map(|globs| {
 		let mut builder = GlobSetBuilder::new();
 		for glob in globs {
