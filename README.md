@@ -73,6 +73,7 @@ Here is the order in which the credentials will be resolved:
     - `AWS_ACCESS_KEY_ID`
     - `AWS_SECRET_ACCESS_KEY`
     - `AWS_DEFAULT_REGION`
+    - `AWS_ENDPOINT`
 
 > NOTE: '-' characters in profile and bucket names will be replaced by '_' for environment names above. So a bucket name `my-bucket-001` will map to the environment variable `SS3_BUCKET_my_bucket_001_KEY_ID` ...
 

@@ -17,6 +17,7 @@ use super::SBucketConfig;
 const AWS_ACCESS_KEY_ID: &str = "AWS_ACCESS_KEY_ID";
 const AWS_SECRET_ACCESS_KEY: &str = "AWS_SECRET_ACCESS_KEY";
 const AWS_DEFAULT_REGION: &str = "AWS_DEFAULT_REGION";
+const AWS_ENDPOINT: &str = "AWS_ENDPOINT";
 
 #[derive(Debug)]
 struct AwsCred {
@@ -146,6 +147,7 @@ async fn load_aws_cred(profile: Option<&str>, bucket: &str) -> Result<AwsCred, E
 /// - `SS3_BUCKET_bucket_name_KEY_ID`
 /// - `SS3_BUCKET_bucket_name_KEY_SECRET`
 /// - `SS3_BUCKET_bucket_name_REGION`
+/// - `SS3_BUCKET_bucket_name_ENDPOINT`
 async fn load_aws_cred_from_ss3_bucket_env(bucket: &str) -> Result<AwsCred, Error> {
 	let key_id = get_env(&get_env_name(EnvType::Bucket, CredKey::Id, bucket))?;
 	let key_secret = get_env(&get_env_name(EnvType::Bucket, CredKey::Secret, bucket))?;
@@ -164,6 +166,7 @@ async fn load_aws_cred_from_ss3_bucket_env(bucket: &str) -> Result<AwsCred, Erro
 /// - `SS3_PROFILE_profile_name_KEY_ID`
 /// - `SS3_PROFILE_profile_name_KEY_SECRET`
 /// - `SS3_PROFILE_profile_name_REGION`
+/// - `SS3_PROFILE_profile_name_ENDPOINT`
 async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred, Error> {
 	let key_id = get_env(&get_env_name(EnvType::Profile, CredKey::Id, profile))?;
 	let key_secret = get_env(&get_env_name(EnvType::Profile, CredKey::Secret, profile))?;
@@ -186,12 +189,13 @@ async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<Aws
 			let key_id = get_profile_value(profile, "aws_access_key_id")?;
 			let key_secret = get_profile_value(profile, "aws_secret_access_key")?;
 			let region = get_profile_value(profile, "region").ok();
+			let endpoint = get_profile_value(profile, "endpoint").ok();
 
 			return Ok(AwsCred {
 				key_id,
 				key_secret,
 				region,
-				endpoint: None, // because aws configs only
+				endpoint, // because aws configs only
 			});
 		}
 	}
@@ -203,12 +207,13 @@ async fn load_aws_cred_from_default_aws_env() -> Result<AwsCred, Error> {
 	let key_id = get_env(AWS_ACCESS_KEY_ID)?;
 	let key_secret = get_env(AWS_SECRET_ACCESS_KEY)?;
 	let region = get_env(AWS_DEFAULT_REGION).ok();
+	let endpoint = get_env(AWS_ENDPOINT).ok();
 
 	Ok(AwsCred {
 		key_id,
 		key_secret,
 		region,
-		endpoint: None,
+		endpoint,
 	})
 }
 
