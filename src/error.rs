@@ -25,16 +25,19 @@ pub enum Error {
   - Provide bucket SS3_BUCKET_... environments (will take precendence on profile env/configs)
     - SS3_BUCKET_bucket_name_KEY_ID
     - SS3_BUCKET_bucket_name_KEY_SECRET
-    - SS3_BUCKET_bucket_name_REGION  
+    - SS3_BUCKET_bucket_name_REGION
+    - SS3_BUCKET_bucket_name_ENDPOINT (optional)  
   - Provide '--profile profile_name' with the following SS3_PROFILE_... environments:
     - SS3_PROFILE_profile_name_KEY_ID
     - SS3_PROFILE_profile_name_KEY_SECRET
     - SS3_PROFILE_profile_name_REGION  
+    - SS3_PROFILE_profile_name_ENDPOINT (optional)
   - Provide '--profile profile_name' which should be configured in aws default config files
   - As a last fallback, use the default AWS environment variables: 
     - AWS_ACCESS_KEY_ID
     - AWS_SECRET_ACCESS_KEY
     - AWS_DEFAULT_REGION
+    - AWS_ENDPOINT (optional)
   NOTE: '-' characters in profile and bucket names will be replaced by '_' for environment names above.		
   	"
 	)]
