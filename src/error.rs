@@ -74,20 +74,23 @@ pub enum Error {
 	InvalidUri(#[from] http::uri::InvalidUri),
 
 	#[error(transparent)]
-	ByteStreamError(#[from] aws_smithy_http::byte_stream::Error),
+	ByteStream(#[from] aws_smithy_http::byte_stream::error::Error),
+
+	#[error(transparent)]
+	InvalidEndpoint(#[from] aws_config::endpoint::error::InvalidEndpointError),
 
 	#[error(transparent)]
 	AwsGetObjectError(#[from] SdkError<GetObjectError>),
 
 	#[error(transparent)]
-	AwsListObjectsV2Error(#[from] SdkError<ListObjectsV2Error>),
+	AwsListObjectsV2(#[from] SdkError<ListObjectsV2Error>),
 
 	#[error(transparent)]
-	AwsPutObjectError(#[from] SdkError<PutObjectError>),
+	AwsPutObject(#[from] SdkError<PutObjectError>),
 
 	#[error(transparent)]
-	AwsHeadObjectError(#[from] SdkError<HeadObjectError>),
+	AwsHeadObject(#[from] SdkError<HeadObjectError>),
 
 	#[error(transparent)]
-	IOError(#[from] std::io::Error),
+	IO(#[from] std::io::Error),
 }

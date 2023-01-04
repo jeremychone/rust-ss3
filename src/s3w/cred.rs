@@ -5,10 +5,8 @@ use aws_sdk_s3::config::Builder;
 use aws_sdk_s3::{Client, Credentials, Endpoint, Region};
 use aws_types::credentials::SharedCredentialsProvider;
 use aws_types::os_shim_internal::{Env, Fs};
-use http::Uri;
 use std::collections::HashSet;
 use std::env;
-use std::str::FromStr;
 
 use super::s3_bucket::SBucket;
 use super::SBucketConfig;
@@ -93,7 +91,7 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 	let mut builder = Builder::new().credentials_provider(SharedCredentialsProvider::new(cred));
 
 	if let Some(endpoint) = endpoint {
-		builder = builder.endpoint_resolver(Endpoint::immutable(Uri::from_str(&endpoint).unwrap()));
+		builder = builder.endpoint_resolver(Endpoint::immutable(endpoint)?);
 		// WORKAROUND - Right now the aws-sdk throw a NoRegion on .send if not region even if we have a endpoint
 		builder = builder.region(Region::new("endpoint-region"));
 	}
