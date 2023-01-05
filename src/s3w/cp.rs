@@ -1,5 +1,4 @@
-use super::s3_bucket::{SBucket, SItem};
-use super::{compute_dst_key, compute_dst_path, get_file_name, path_type, ListOptions, ListResult, PathType};
+use super::{compute_dst_key, compute_dst_path, get_file_name, path_type, ListOptions, ListResult, PathType, SBucket, SItem};
 use crate::{s, Error};
 use aws_sdk_s3::types::ByteStream;
 use globset::GlobSet;

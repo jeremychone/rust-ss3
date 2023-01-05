@@ -1,6 +1,4 @@
-////////////////////////////////////
-// AWS S3 Wrapper API
-////
+//! AWS API Wrapper
 
 use crate::Error;
 use pathdiff::diff_paths;
@@ -8,13 +6,20 @@ use std::path::{Path, PathBuf};
 
 mod cp;
 mod cred;
-mod s3_bucket;
+mod list;
+mod list_buckets;
+mod sbucket;
+mod sitem;
 
 // re-export
 pub use self::cp::CpOptions;
 pub use self::cp::OverMode;
 pub use self::cred::get_sbucket;
-pub use self::s3_bucket::{ListInfo, ListOptions, ListResult, SBucketConfig};
+pub use self::cred::new_s3_client;
+pub use self::list::{ListInfo, ListOptions, ListResult};
+pub use self::list_buckets::list_buckets;
+pub use self::sbucket::{SBucket, SBucketConfig};
+pub use self::sitem::{SItem, SItemType};
 
 // region:    --- Mod Utils
 

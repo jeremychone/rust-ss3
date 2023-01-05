@@ -1,9 +1,10 @@
-// #![allow(unused)] // silence unused warnings while exploring (to comment out)
+#![allow(unused)] // silence unused warnings while exploring (to comment out)
 use cmd::cmd_run;
 
 mod cmd;
 mod consts;
 mod error;
+mod prelude;
 mod s3w;
 mod spath;
 

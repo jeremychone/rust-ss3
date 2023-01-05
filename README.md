@@ -1,8 +1,6 @@
+**Yet another S3 command-line**, but environment variables are driven per bucket or profile credentials. 
 
-
-**Yet another S3 command-line**, but environment variables are driven for per bucket or profile credentials. 
-
-**NOTE:** **Experimental** `v0.0.5` is somewhat feature complete. 
+> Note: `v0.1.x` now has the base feature set. Still, many enhancements are possible, and we will add them as needed/requested.
 
 Key points:
 - Uses the official [AWS-SDK-S3](https://crates.io/crates/aws-sdk-s3) library.
@@ -25,13 +23,16 @@ binst install ss3
 ## Command Examples
 
 ```sh
+# list all buckets (assuming appropriate access)
+ss3 ls s3://
+
 # list all object and prefixes (-r for recursive)
 ss3 ls s3://my-bucket -r
 
 # list all object and prefixes (--info to display total count & size, also per extensions)
 ss3 ls s3://my-bucket -r --info
 
-# Upload single file
+# Upload a single file
 ss3 cp ./image-01.jpg s3://my-bucket/my-folder
 
 # Upload full folder (recursive)
@@ -62,18 +63,18 @@ Here is the order in which the credentials will be resolved:
     - `SS3_BUCKET_bucket_name_KEY_ID`
     - `SS3_BUCKET_bucket_name_KEY_SECRET`
     - `SS3_BUCKET_bucket_name_REGION`  
-    - `SS3_BUCKET_bucket_name_ENDPOINT` (optional for minio)     
+    - `SS3_BUCKET_bucket_name_ENDPOINT` (optional, for minio)     
 - Second, when `--profile profile_name`, check the following `SS3_PROFILE_...` environments
     - `SS3_PROFILE_profile_name_KEY_ID`
     - `SS3_PROFILE_profile_name_KEY_SECRET`
     - `SS3_PROFILE_profile_name_REGION`  
-    - `SS3_PROFILE_profile_name_ENDPOINT` (optional for minio) 
+    - `SS3_PROFILE_profile_name_ENDPOINT` (optional, for minio) 
 - Third, when `--profile profile_name`, and no profile environments, will check default AWS config files
 - As as a last fallback, use the default AWS environment variables: 
     - `AWS_ACCESS_KEY_ID`
     - `AWS_SECRET_ACCESS_KEY`
     - `AWS_DEFAULT_REGION`
-    - `AWS_ENDPOINT`
+    - `AWS_ENDPOINT` (optional, for minio)
 
 > NOTE: '-' characters in profile and bucket names will be replaced by '_' for environment names above. So a bucket name `my-bucket-001` will map to the environment variable `SS3_BUCKET_my_bucket_001_KEY_ID` ...
 

@@ -8,7 +8,7 @@ use aws_types::os_shim_internal::{Env, Fs};
 use std::collections::HashSet;
 use std::env;
 
-use super::s3_bucket::SBucket;
+use super::SBucket;
 use super::SBucketConfig;
 
 // Default AWS environement names (used as last fallback)
@@ -58,7 +58,7 @@ impl EnvType {
 }
 
 pub async fn get_sbucket(profile: Option<&str>, bucket: &str) -> Result<SBucket, Error> {
-	let client = new_s3_client(profile, bucket).await?;
+	let client = new_s3_client(profile, Some(bucket)).await?;
 	let default_ignore_files = HashSet::from_iter(DEFAULT_UPLOAD_IGNORE_FILES.map(String::from));
 	let config = SBucketConfig {
 		default_ignore_upload_names: Some(default_ignore_files),
@@ -68,7 +68,7 @@ pub async fn get_sbucket(profile: Option<&str>, bucket: &str) -> Result<SBucket,
 	Ok(sbucket)
 }
 
-async fn new_s3_client(profile: Option<&str>, bucket: &str) -> Result<Client, Error> {
+pub async fn new_s3_client(profile: Option<&str>, bucket: Option<&str>) -> Result<Client, Error> {
 	let cred = load_aws_cred(profile, bucket).await?;
 	let client = client_from_cred(cred)?;
 	Ok(client)
@@ -115,30 +115,34 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 ///    - try SS3_BUCKET_... envs
 ///    - try the default AWS env keys
 ///    - if still not found, error
-async fn load_aws_cred(profile: Option<&str>, bucket: &str) -> Result<AwsCred, Error> {
-	// first, try to get it from the SS3_BUCKET_bucket_name_KEY_ID, ... environments
-	let mut cred_result = load_aws_cred_from_ss3_bucket_env(bucket).await;
+async fn load_aws_cred(profile: Option<&str>, bucket: Option<&str>) -> Result<AwsCred, Error> {
+	let mut cred_result: Option<AwsCred> = None;
+
+	if let Some(bucket) = bucket {
+		// first, try to get it from the SS3_BUCKET_bucket_name_KEY_ID, ... environments
+		cred_result = load_aws_cred_from_ss3_bucket_env(bucket).await.ok();
+	}
 
 	// if not found
-	if cred_result.is_err() {
+	if cred_result.is_none() {
 		// if we have a profile defined
 		if let Some(profile) = profile {
 			// try to get it from the SS3_PROFILE_profile_name_KEY_ID, ... environments
-			cred_result = load_aws_cred_from_ss3_profile_env(profile).await;
+			cred_result = load_aws_cred_from_ss3_profile_env(profile).await.ok();
 
-			// then, try to get it frmo the aws config files
-			if cred_result.is_err() {
-				cred_result = load_aws_cred_from_aws_profile_configs(profile).await;
+			// then, try to get it from the aws config files
+			if cred_result.is_none() {
+				cred_result = load_aws_cred_from_aws_profile_configs(profile).await.ok();
 			}
 		}
 	}
 
 	// if still not found, try the default AWS env
-	if cred_result.is_err() {
-		cred_result = load_aws_cred_from_default_aws_env().await;
+	if cred_result.is_none() {
+		cred_result = load_aws_cred_from_default_aws_env().await.ok();
 	}
 
-	cred_result.map_err(|_| Error::NoCredentialsFoundForBucket(bucket.to_string()))
+	cred_result.ok_or_else(|| Error::NoCredentialsFoundForBucket(bucket.map(|s| s.to_string())))
 }
 
 /// Attempt to create AwsCred from SS3 BUCKET environment variables

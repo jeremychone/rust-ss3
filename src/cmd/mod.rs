@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-
 use self::app::{ARG_NOEXT_CT, ARG_OVER, ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
-use crate::s3w::{get_sbucket, CpOptions, ListInfo, ListOptions, ListResult, OverMode};
+use crate::prelude::*;
+use crate::s3w::{get_sbucket, list_buckets, new_s3_client, CpOptions, ListInfo, ListOptions, ListResult, OverMode};
 use crate::spath::SPath;
 use crate::{s, Error, CT_HTML, CT_TEXT};
 use clap::ArgMatches;
 use file_size::fit_4;
 use globset::{Glob, GlobSet, GlobSetBuilder};
+use std::collections::HashMap;
 
 mod app;
 
-pub async fn cmd_run() -> Result<(), Error> {
+pub async fn cmd_run() -> Result<()> {
 	let argm = cmd_app().get_matches();
 
 	// get the dir from the root command or sub command
@@ -35,10 +35,26 @@ pub async fn cmd_run() -> Result<(), Error> {
 	Ok(())
 }
 
-pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Error> {
-	let url_1 = get_path_1(argm)?;
+pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+	let s3_url = argm
+		.get_one::<String>(ARG_PATH_1)
+		.ok_or(Error::CmdInvalid("This command requires a S3 url or file path"))?;
 
-	let s3_url = match url_1 {
+	if s3_url == "s3://" {
+		let client = new_s3_client(profile, None).await?;
+		let buckets = list_buckets(&client).await?;
+		for bucket in buckets {
+			println!("{bucket}");
+		}
+	} else {
+		exec_ls_objects(SPath::from_str(s3_url)?, profile, argm).await?;
+	}
+
+	Ok(())
+}
+
+pub async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+	let s3_url = match spath {
 		SPath::S3(s3_url) => s3_url,
 		SPath::File(_) => return Err(Error::CmdInvalid("The 'ls' command requires a S3 url")),
 	};
@@ -112,7 +128,7 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 	Ok(())
 }
 
-pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Error> {
+pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 	let url_1 = get_path_1(argm)?;
 	let url_2 = get_path_2(argm)?;
 
@@ -149,7 +165,7 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<(), Err
 }
 
 // region:    Args Utils
-fn get_path_1(argm: &ArgMatches) -> Result<SPath, Error> {
+fn get_path_1(argm: &ArgMatches) -> Result<SPath> {
 	let path = argm
 		.get_one::<String>(ARG_PATH_1)
 		.ok_or(Error::CmdInvalid("This command requires a S3 url or file path"))?;
@@ -157,7 +173,7 @@ fn get_path_1(argm: &ArgMatches) -> Result<SPath, Error> {
 	SPath::from_str(path)
 }
 
-fn get_path_2(argm: &ArgMatches) -> Result<SPath, Error> {
+fn get_path_2(argm: &ArgMatches) -> Result<SPath> {
 	let path = argm
 		.get_one::<String>(ARG_PATH_2)
 		.ok_or(Error::CmdInvalid("This command require a second S3 url or file path"))?;
@@ -168,7 +184,7 @@ fn get_path_2(argm: &ArgMatches) -> Result<SPath, Error> {
 
 // region:    --- ListOptions Builder
 impl ListOptions {
-	fn from_argm(argm: &ArgMatches) -> Result<ListOptions, Error> {
+	fn from_argm(argm: &ArgMatches) -> Result<ListOptions> {
 		let recursive = argm.get_flag(ARG_RECURSIVE);
 		let info = match (argm.get_flag("info"), argm.get_flag("info-only")) {
 			// --info

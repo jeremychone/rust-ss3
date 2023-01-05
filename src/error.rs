@@ -1,8 +1,14 @@
-use aws_sdk_s3::error::{GetObjectError, HeadObjectError, ListObjectsV2Error, PutObjectError};
+use aws_sdk_s3::error::{GetObjectError, HeadObjectError, ListBucketsError, ListObjectsV2Error, PutObjectError};
 use aws_sdk_s3::types::SdkError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error("Static error: {0}")]
+	Static(&'static str),
+
+	#[error("Generic error: {0}")]
+	Generic(String),
+
 	#[error("Not a valid s3 url '{0}'. Should be format 's3://bucket_name[/path/to/object]'")]
 	NotValidS3Url(String),
 
@@ -21,7 +27,7 @@ pub enum Error {
 	NoDefaultEnvCredentialsFound,
 
 	#[error(
-		"No credential found for bucket '{0}'. Provide the following (by order of precedence): 
+		"No credential found for bucket '{0:?}'. Provide the following (by order of precedence): 
   - Provide bucket SS3_BUCKET_... environments (will take precendence on profile env/configs)
     - SS3_BUCKET_bucket_name_KEY_ID
     - SS3_BUCKET_bucket_name_KEY_SECRET
@@ -41,7 +47,7 @@ pub enum Error {
   NOTE: '-' characters in profile and bucket names will be replaced by '_' for environment names above.		
   	"
 	)]
-	NoCredentialsFoundForBucket(String),
+	NoCredentialsFoundForBucket(Option<String>),
 
 	#[error("Missing config. The credential environment variables or config must have either a REGION or ENDPOINT. Both absent.")]
 	MissingConfigMustHaveEndpointOrRegion,
@@ -79,8 +85,11 @@ pub enum Error {
 	#[error(transparent)]
 	InvalidEndpoint(#[from] aws_config::endpoint::error::InvalidEndpointError),
 
+	#[error("AWS Service Error. Code: {0}, Message: {1}")]
+	AwsServiceError(String, String), // code, message
+
 	#[error(transparent)]
-	AwsGetObjectError(#[from] SdkError<GetObjectError>),
+	AwsGetObject(#[from] SdkError<GetObjectError>),
 
 	#[error(transparent)]
 	AwsListObjectsV2(#[from] SdkError<ListObjectsV2Error>),
@@ -93,4 +102,15 @@ pub enum Error {
 
 	#[error(transparent)]
 	IO(#[from] std::io::Error),
+}
+
+/// For better CLI error reporting.
+/// Note: Might do the same for the other AwsError types.
+impl From<SdkError<ListBucketsError>> for Error {
+	fn from(val: SdkError<ListBucketsError>) -> Self {
+		let se = val.into_service_error();
+		let code = se.code().unwrap_or_default().to_string();
+		let message = se.message().unwrap_or_default().to_string();
+		Error::AwsServiceError(code, message)
+	}
 }
