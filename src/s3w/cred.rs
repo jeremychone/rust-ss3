@@ -2,8 +2,7 @@ use crate::{Error, DEFAULT_UPLOAD_IGNORE_FILES};
 use aws_config::profile::profile_file::ProfileFiles;
 use aws_config::profile::Profile;
 use aws_sdk_s3::config::Builder;
-use aws_sdk_s3::{Client, Credentials, Endpoint, Region};
-use aws_types::credentials::SharedCredentialsProvider;
+use aws_sdk_s3::{Client, Credentials, Region};
 use aws_types::os_shim_internal::{Env, Fs};
 use std::collections::HashSet;
 use std::env;
@@ -88,10 +87,10 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 		return Err(Error::MissingConfigMustHaveEndpointOrRegion);
 	}
 
-	let mut builder = Builder::new().credentials_provider(SharedCredentialsProvider::new(cred));
+	let mut builder = Builder::new().credentials_provider(cred);
 
 	if let Some(endpoint) = endpoint {
-		builder = builder.endpoint_resolver(Endpoint::immutable(endpoint)?);
+		builder = builder.endpoint_url(endpoint);
 		// WORKAROUND - Right now the aws-sdk throw a NoRegion on .send if not region even if we have a endpoint
 		builder = builder.region(Region::new("endpoint-region"));
 	}
@@ -185,7 +184,7 @@ async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred, Er
 
 async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<AwsCred, Error> {
 	let (fs, ev) = (Fs::real(), Env::default());
-	let profiles = aws_config::profile::load(&fs, &ev, &ProfileFiles::default()).await;
+	let profiles = aws_config::profile::load(&fs, &ev, &ProfileFiles::default(), None).await;
 	if let Ok(profiles) = profiles {
 		if let Some(profile) = profiles.get_profile(profile_str) {
 			let key_id = get_profile_value(profile, "aws_access_key_id")?;

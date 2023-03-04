@@ -45,7 +45,13 @@ impl SBucket {
 		}
 
 		// EXECUTE - the AWS S3 request
-		let resp = builder.send().await?;
+		let resp = match builder.send().await {
+			Ok(resp) => resp,
+			Err(err) => {
+				println!("->> ERRO {err:?}");
+				Err(err)?
+			}
+		};
 
 		// get the prefixes
 		let prefixes: Vec<SItem> = resp.common_prefixes().unwrap_or_default().iter().map(SItem::from_prefix).collect();
