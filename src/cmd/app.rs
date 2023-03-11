@@ -1,9 +1,10 @@
 use clap::{crate_version, Arg, ArgAction, Command};
 
-pub const ARG_RECURSIVE: &str = "recursive";
+pub const ARG_REGION: &str = "recursive";
+pub const ARG_RECURSIVE: (&str, char) = ("recursive", 'r');
 pub const ARG_PATH_1: &str = "path_1";
 pub const ARG_PATH_2: &str = "path_2";
-pub const ARG_PROFILE: &str = "profile";
+pub const ARG_PROFILE: (&str, char) = ("profile", 'p');
 pub const ARG_EXCLUDE: &str = "exclude";
 pub const ARG_INCLUDE: &str = "include";
 pub const ARG_NOEXT_CT: &str = "noext-ct";
@@ -15,6 +16,9 @@ pub fn cmd_app() -> Command {
 		.arg(arg_profile())
 		.subcommand(sub_ls())
 		.subcommand(sub_cp())
+		.subcommand(sub_rm())
+		.subcommand(sub_mb())
+		.subcommand(sub_rb())
 }
 
 fn sub_ls() -> Command {
@@ -22,6 +26,8 @@ fn sub_ls() -> Command {
 		.about("List from s3 url")
 		.arg(arg_profile())
 		.arg(arg_path_1())
+		.arg(arg_include())
+		.arg(arg_exlude())
 		.arg(arg_recursive())
 		.arg(
 			Arg::new("info")
@@ -35,6 +41,20 @@ fn sub_ls() -> Command {
 				.long("info-only")
 				.help("Display only info of the listing (total files, total size, total size per extension)"),
 		)
+}
+
+fn sub_mb() -> Command {
+	Command::new("mb")
+		.about("Creates an S3 bucket. e.g., `ss3 mb ss3://my-bucket`")
+		.arg(arg_profile())
+		.arg(arg_path_1())
+}
+
+fn sub_rb() -> Command {
+	Command::new("rb")
+		.about("Delete an S3 bucket. e.g., `ss3 rb ss3://my-bucket`")
+		.arg(arg_profile())
+		.arg(arg_path_1())
 }
 
 fn sub_cp() -> Command {
@@ -55,6 +75,13 @@ fn sub_cp() -> Command {
 		)
 }
 
+fn sub_rm() -> Command {
+	Command::new("rm")
+		.about("Delete a S3 object by it's URL")
+		.arg(arg_profile())
+		.arg(arg_path_1())
+}
+
 // region:    --- Common Args
 fn arg_path_1() -> Arg {
 	Arg::new(ARG_PATH_1)
@@ -68,24 +95,33 @@ fn arg_path_2() -> Arg {
 }
 
 fn arg_recursive() -> Arg {
-	Arg::new(ARG_RECURSIVE)
+	Arg::new(ARG_RECURSIVE.0)
 		.num_args(0)
 		.action(ArgAction::SetTrue)
-		.short('r')
+		.short(ARG_RECURSIVE.1)
+		.long(ARG_RECURSIVE.0)
 		.help("Specify to list all keys recursively")
 }
 
 fn arg_profile() -> Arg {
-	Arg::new(ARG_PROFILE)
+	Arg::new(ARG_PROFILE.0)
 		.required(false)
 		.num_args(1)
-		.short('p')
-		.long("profile")
+		.short(ARG_PROFILE.1)
+		.long(ARG_PROFILE.0)
 		.help("The profile to use if no bucket environment credentials.")
+}
+
+fn arg_region() -> Arg {
+	Arg::new(ARG_REGION)
+		.required(false)
+		.num_args(1)
+		.long(ARG_REGION)
+		.help("The region to use for this command (override profile/env region).")
 }
 // endregion: --- Common Args
 
-// region:    --- cp Args
+// region:    --- cp/ls Args
 fn arg_exlude() -> Arg {
 	Arg::new(ARG_EXCLUDE)
 		.num_args(1)
@@ -104,6 +140,9 @@ fn arg_include() -> Arg {
 		.help("Only process the item that match the glob expression.")
 }
 
+// endregion: --- cp/ls Args
+
+// region:    --- cp Args
 fn arg_noext_ct() -> Arg {
 	Arg::new(ARG_NOEXT_CT)
 		.num_args(1)

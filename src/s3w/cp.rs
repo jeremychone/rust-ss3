@@ -1,4 +1,6 @@
-use super::{compute_dst_key, compute_dst_path, get_file_name, path_type, ListOptions, ListResult, PathType, SBucket, SItem};
+use super::{
+	compute_dst_key, compute_dst_path, compute_inex, get_file_name, path_type, Inex, ListOptions, ListResult, PathType, SBucket, SItem,
+};
 use crate::{s, Error};
 use aws_sdk_s3::types::ByteStream;
 use globset::GlobSet;
@@ -79,7 +81,7 @@ impl SBucket {
 		}
 
 		if let Some(src_file_str) = src_file.to_str() {
-			match validate_inex_rules(key, opts) {
+			match compute_inex(key, &opts.includes, &opts.excludes) {
 				Inex::Include => {
 					if validate_over_for_s3_dest(self, key, opts).await? {
 						// BUILD - the src file info
@@ -204,7 +206,7 @@ impl SBucket {
 	}
 
 	async fn download_file(&self, key: &str, dst_file: &Path, opts: &CpOptions) -> Result<(), Error> {
-		match validate_inex_rules(key, opts) {
+		match compute_inex(key, &opts.includes, &opts.excludes) {
 			Inex::Include => {
 				if validate_over_for_file_dest(dst_file, opts)? {
 					println!(
@@ -238,29 +240,6 @@ impl SBucket {
 			Inex::ExcludeNotInInclude => (),
 		}
 		Ok(())
-	}
-}
-
-/// Inclusion/Exclusion result
-enum Inex {
-	Include,
-	ExcludeInExclude,
-	ExcludeNotInInclude,
-}
-
-/// validate the Include / Exclusion rules
-fn validate_inex_rules(path: &str, opts: &CpOptions) -> Inex {
-	// Note: Those match_... will have 3 states, None (if no rule), Some(true), Some(false)
-	let match_include = opts.includes.as_ref().map(|gs| !gs.matches(path).is_empty());
-	let match_exclude = opts.excludes.as_ref().map(|gs| !gs.matches(path).is_empty());
-
-	match (match_include, match_exclude) {
-		// if pass the include gate (no include rule or matched it) and not in eventual exclude
-		(None | Some(true), None | Some(false)) => Inex::Include,
-		// passed the include gate, but is explicity excluded
-		(None | Some(true), Some(true)) => Inex::ExcludeInExclude,
-		// Did not pass the include gate
-		(Some(false), _) => Inex::ExcludeNotInInclude,
 	}
 }
 

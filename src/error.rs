@@ -1,4 +1,7 @@
-use aws_sdk_s3::error::{GetObjectError, HeadObjectError, ListBucketsError, ListObjectsV2Error, PutObjectError};
+use aws_sdk_s3::error::{
+	CreateBucketError, DeleteBucketError, DeleteObjectError, GetObjectError, HeadObjectError, ListBucketsError, ListObjectsV2Error,
+	PutObjectError,
+};
 use aws_sdk_s3::types::SdkError;
 
 #[derive(thiserror::Error, Debug)]
@@ -85,32 +88,56 @@ pub enum Error {
 	#[error(transparent)]
 	InvalidEndpoint(#[from] aws_config::endpoint::error::InvalidEndpointError),
 
-	#[error("AWS Service Error. Code: {0}, Message: {1}")]
-	AwsServiceError(String, String), // code, message
+	#[error("AWS SDK ERROR:\n       Code: {0}\n    Message: {1}")]
+	AwsSdkErrorWrapper(String, String),
 
-	#[error(transparent)]
-	AwsGetObject(#[from] SdkError<GetObjectError>),
-
-	#[error(transparent)]
-	AwsListObjectsV2(#[from] SdkError<ListObjectsV2Error>),
-
-	#[error(transparent)]
-	AwsPutObject(#[from] SdkError<PutObjectError>),
-
-	#[error(transparent)]
-	AwsHeadObject(#[from] SdkError<HeadObjectError>),
-
+	//
 	#[error(transparent)]
 	IO(#[from] std::io::Error),
 }
 
-/// For better CLI error reporting.
-/// Note: Might do the same for the other AwsError types.
-impl From<SdkError<ListBucketsError>> for Error {
-	fn from(val: SdkError<ListBucketsError>) -> Self {
+macro_rules! impl_from_sdk_error {
+	($($ie:ident),*) => {
+		$(
+impl From<SdkError<$ie>> for Error {
+	fn from(val: SdkError<$ie>) -> Self {
 		let se = val.into_service_error();
 		let code = se.code().unwrap_or_default().to_string();
 		let message = se.message().unwrap_or_default().to_string();
-		Error::AwsServiceError(code, message)
+		Error::AwsSdkErrorWrapper(code, message)
 	}
 }
+		)*
+	};
+}
+
+impl_from_sdk_error!(
+	ListBucketsError,
+	CreateBucketError,
+	DeleteBucketError,
+	GetObjectError,
+	DeleteObjectError,
+	PutObjectError,
+	HeadObjectError,
+	ListObjectsV2Error
+);
+
+// For better CLI error reporting.
+// Note: Might do the same for the other AwsError types.
+// impl From<SdkError<ListBucketsError>> for Error {
+// 	fn from(val: SdkError<ListBucketsError>) -> Self {
+// 		let se = val.into_service_error();
+// 		let code = se.code().unwrap_or_default().to_string();
+// 		let message = se.message().unwrap_or_default().to_string();
+// 		Error::AwsServiceError(code, message)
+// 	}
+// }
+
+// impl From<SdkError<CreateBucketError>> for Error {
+// 	fn from(val: SdkError<CreateBucketError>) -> Self {
+// 		let se = val.into_service_error();
+// 		let code = se.code().unwrap_or_default().to_string();
+// 		let message = se.message().unwrap_or_default().to_string();
+// 		Error::AwsCreateBucket(code, message)
+// 	}
+// }

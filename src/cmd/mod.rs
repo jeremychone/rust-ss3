@@ -1,9 +1,11 @@
-use self::app::{ARG_NOEXT_CT, ARG_OVER, ARG_PATH_1, ARG_PATH_2, ARG_RECURSIVE};
 use crate::cmd::app::cmd_app;
 use crate::prelude::*;
-use crate::s3w::{get_sbucket, list_buckets, new_s3_client, CpOptions, ListInfo, ListOptions, ListResult, OverMode};
-use crate::spath::SPath;
+use crate::s3w::{
+	create_bucket, delete_bucket, get_sbucket, list_buckets, new_s3_client, CpOptions, ListInfo, ListOptions, ListResult, OverMode,
+};
+use crate::spath::{S3Url, SPath};
 use crate::{s, Error, CT_HTML, CT_TEXT};
+use app::{ARG_NOEXT_CT, ARG_OVER, ARG_PATH_1, ARG_PATH_2, ARG_PROFILE, ARG_RECURSIVE};
 use clap::ArgMatches;
 use file_size::fit_4;
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -16,9 +18,9 @@ pub async fn cmd_run() -> Result<()> {
 
 	// get the dir from the root command or sub command
 	let profile = argm
-		.get_one::<String>("profile")
+		.get_one::<String>(ARG_PROFILE.0)
 		.or_else(|| match &argm.subcommand() {
-			Some((_, sub)) => sub.get_one::<String>("profile"),
+			Some((_, sub)) => sub.get_one::<String>(ARG_PROFILE.0),
 			_ => None,
 		})
 		.map(String::as_str);
@@ -26,6 +28,9 @@ pub async fn cmd_run() -> Result<()> {
 	match argm.subcommand() {
 		Some(("ls", sub_cmd)) => exec_ls(profile, sub_cmd).await?,
 		Some(("cp", sub_cmd)) => exec_cp(profile, sub_cmd).await?,
+		Some(("rm", sub_cmd)) => exec_rm(profile, sub_cmd).await?,
+		Some(("mb", sub_cmd)) => exec_mb(profile, sub_cmd).await?,
+		Some(("rb", sub_cmd)) => exec_rb(profile, sub_cmd).await?,
 		_ => {
 			cmd_app().print_long_help()?;
 			println!("\n");
@@ -41,11 +46,7 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 		.ok_or(Error::CmdInvalid("This command requires a S3 url or file path"))?;
 
 	if s3_url == "s3://" {
-		let client = new_s3_client(profile, None).await?;
-		let buckets = list_buckets(&client).await?;
-		for bucket in buckets {
-			println!("{bucket}");
-		}
+		exec_ls_buckets(profile);
 	} else {
 		exec_ls_objects(SPath::from_str(s3_url)?, profile, argm).await?;
 	}
@@ -53,7 +54,16 @@ pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 	Ok(())
 }
 
-pub async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+async fn exec_ls_buckets(profile: Option<&str>) -> Result<()> {
+	let client = new_s3_client(profile, None).await?;
+	let buckets = list_buckets(&client).await?;
+	for bucket in buckets {
+		println!("{bucket}");
+	}
+	Ok(())
+}
+
+async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 	let s3_url = match spath {
 		SPath::S3(s3_url) => s3_url,
 		SPath::File(_) => return Err(Error::CmdInvalid("The 'ls' command requires a S3 url")),
@@ -128,6 +138,30 @@ pub async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatc
 	Ok(())
 }
 
+pub async fn exec_mb(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+	let s3_url = get_s3_url_1(argm)?;
+	let bucket_name = s3_url.bucket();
+
+	let client = new_s3_client(profile, Some(bucket_name)).await?;
+	let bucket_created = create_bucket(&client, bucket_name).await?;
+	if let Some(bucket_created) = bucket_created {
+		println!("Bucket Created: {bucket_created}");
+	}
+
+	Ok(())
+}
+
+pub async fn exec_rb(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+	let s3_url = get_s3_url_1(argm)?;
+	let bucket_name = s3_url.bucket();
+
+	let client = new_s3_client(profile, Some(bucket_name)).await?;
+	delete_bucket(&client, bucket_name).await?;
+	println!("Bucket Deleted: {bucket_name}");
+
+	Ok(())
+}
+
 pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 	let url_1 = get_path_1(argm)?;
 	let url_2 = get_path_2(argm)?;
@@ -164,7 +198,31 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 	Ok(())
 }
 
+pub async fn exec_rm(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+	let s3_url = get_s3_url_1(argm)?;
+
+	let bucket = get_sbucket(profile, s3_url.bucket()).await?;
+
+	bucket.delete_object(s3_url.key()).await?;
+	println!("Object Deleted: {s3_url}");
+
+	Ok(())
+}
 // region:    Args Utils
+fn get_s3_url_1(argm: &ArgMatches) -> Result<S3Url> {
+	let path = argm
+		.get_one::<String>(ARG_PATH_1)
+		.ok_or(Error::CmdInvalid("This command requires a S3 url"))?;
+
+	let spath = SPath::from_str(path)?;
+
+	let SPath::S3(s3_url) = spath else {
+		return Err(Error::NotValidS3Url(path.to_string()))
+	};
+
+	Ok(s3_url)
+}
+
 fn get_path_1(argm: &ArgMatches) -> Result<SPath> {
 	let path = argm
 		.get_one::<String>(ARG_PATH_1)
@@ -185,7 +243,7 @@ fn get_path_2(argm: &ArgMatches) -> Result<SPath> {
 // region:    --- ListOptions Builder
 impl ListOptions {
 	fn from_argm(argm: &ArgMatches) -> Result<ListOptions> {
-		let recursive = argm.get_flag(ARG_RECURSIVE);
+		let recursive = argm.get_flag(ARG_RECURSIVE.0);
 		let info = match (argm.get_flag("info"), argm.get_flag("info-only")) {
 			// --info
 			(true, false) => Ok(Some(ListInfo::WithInfo)),
@@ -197,8 +255,13 @@ impl ListOptions {
 			(true, true) => Err(Error::ComamndInvalid("Cannot have '--info' and '--info-only' at the same time")),
 		}?;
 
+		let excludes = build_glob_set(argm, "exclude");
+		let includes = build_glob_set(argm, "include");
+
 		Ok(ListOptions {
 			recursive,
+			includes,
+			excludes,
 			info,
 			..Default::default()
 		})
@@ -210,7 +273,7 @@ impl ListOptions {
 impl CpOptions {
 	fn from_argm(argm: &ArgMatches) -> CpOptions {
 		// extract recursive flag
-		let recursive = argm.get_flag(ARG_RECURSIVE);
+		let recursive = argm.get_flag(ARG_RECURSIVE.0);
 
 		// extract the eventual strings
 		let excludes = build_glob_set(argm, "exclude");

@@ -1,6 +1,7 @@
 use super::sitem::SItem;
-use super::SBucket;
+use super::{validate_key, SBucket};
 use crate::Error;
+use globset::GlobSet;
 
 // region:    --- ListOptions
 pub enum ListInfo {
@@ -11,6 +12,8 @@ pub enum ListInfo {
 #[derive(Default)]
 pub struct ListOptions {
 	pub recursive: bool, // default will be false by Default
+	pub excludes: Option<GlobSet>,
+	pub includes: Option<GlobSet>,
 	pub continuation_token: Option<String>,
 	pub info: Option<ListInfo>,
 }
@@ -54,10 +57,31 @@ impl SBucket {
 		};
 
 		// get the prefixes
-		let prefixes: Vec<SItem> = resp.common_prefixes().unwrap_or_default().iter().map(SItem::from_prefix).collect();
+		let prefixes: Vec<SItem> = resp
+			.common_prefixes()
+			.unwrap_or_default()
+			.iter()
+			.filter(|o| {
+				o.prefix()
+					.map(|p| validate_key(p, &options.includes, &options.excludes))
+					.unwrap_or(false)
+			})
+			.map(SItem::from_prefix)
+			.collect();
 
 		// get the objects
-		let objects: Vec<SItem> = resp.contents().unwrap_or_default().iter().map(SItem::from_object).collect();
+		let objects: Vec<SItem> = resp
+			.contents()
+			.unwrap_or_default()
+			.iter()
+			.filter(|o| {
+				o.key()
+					.map(|p| validate_key(p, &options.includes, &options.excludes))
+					.unwrap_or(false)
+			})
+			.map(SItem::from_object)
+			.collect();
+
 		let next_continuation_token = resp.next_continuation_token().map(|t| t.to_string());
 
 		Ok(ListResult {

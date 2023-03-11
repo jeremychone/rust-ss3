@@ -1,25 +1,59 @@
 //! AWS API Wrapper
 
-use crate::Error;
-use pathdiff::diff_paths;
-use std::path::{Path, PathBuf};
-
-mod cp;
-mod cred;
-mod list;
-mod list_buckets;
-mod sbucket;
-mod sitem;
-
-// re-export
+// --- Re-exports
+pub use self::bucket_ops::{create_bucket, delete_bucket, list_buckets};
 pub use self::cp::CpOptions;
 pub use self::cp::OverMode;
 pub use self::cred::get_sbucket;
 pub use self::cred::new_s3_client;
 pub use self::list::{ListInfo, ListOptions, ListResult};
-pub use self::list_buckets::list_buckets;
 pub use self::sbucket::{SBucket, SBucketConfig};
 pub use self::sitem::{SItem, SItemType};
+
+// --- Imports
+use crate::Error;
+use globset::GlobSet;
+use pathdiff::diff_paths;
+use std::path::{Path, PathBuf};
+
+// --- Sub Modules
+mod bucket_ops;
+mod cp;
+mod cred;
+mod list;
+mod rm;
+mod sbucket;
+mod sitem;
+
+// region:    --- Includes/Excludes Utils
+/// Inclusion/Exclusion result
+enum Inex {
+	Include,
+	ExcludeInExclude,
+	ExcludeNotInInclude,
+}
+
+/// validate the Include / Exclusion rules
+fn compute_inex(key: &str, includes: &Option<GlobSet>, excludes: &Option<GlobSet>) -> Inex {
+	// Note: Those match_... will have 3 states, None (if no rule), Some(true), Some(false)
+	let match_include = includes.as_ref().map(|gs| !gs.matches(key).is_empty());
+	let match_exclude = excludes.as_ref().map(|gs| !gs.matches(key).is_empty());
+
+	match (match_include, match_exclude) {
+		// if pass the include gate (no include rule or matched it) and not in eventual exclude
+		(None | Some(true), None | Some(false)) => Inex::Include,
+		// passed the include gate, but is explicity excluded
+		(None | Some(true), Some(true)) => Inex::ExcludeInExclude,
+		// Did not pass the include gate
+		(Some(false), _) => Inex::ExcludeNotInInclude,
+	}
+}
+
+fn validate_key(key: &str, includes: &Option<GlobSet>, excludes: &Option<GlobSet>) -> bool {
+	matches!(compute_inex(key, includes, excludes), Inex::Include)
+}
+
+// endregion: --- Includes/Excludes Utils
 
 // region:    --- Mod Utils
 

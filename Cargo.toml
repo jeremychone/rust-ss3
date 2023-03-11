@@ -36,3 +36,6 @@ aws-types = "0.54"
 aws-smithy-http = "0.54"
 http = "0.2"
 
+[dev-dependencies]
+anyhow = "1"
+serial_test = "1"

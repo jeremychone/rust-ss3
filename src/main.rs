@@ -10,18 +10,19 @@ mod spath;
 
 pub use consts::*;
 pub use error::Error;
+pub use std::format as f;
+use std::process::ExitCode;
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
+async fn main() -> ExitCode {
 	match cmd_run().await {
-		Ok(_) => (),
+		Ok(_) => ExitCode::SUCCESS,
 		Err(e) => {
-			println!("Error:\n  {}", e)
+			eprintln!("{e}");
+			ExitCode::from(1)
 		}
-	};
+	}
 }
-
-pub use std::format as f;
 
 #[macro_export]
 macro_rules! s {
