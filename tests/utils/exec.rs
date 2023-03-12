@@ -16,7 +16,7 @@ const ENV_CREDS: [(&str, &str); 6] = [
 pub fn exec_ss3(ss3_sub_cmd: &str, args: &[&str], print_exec: bool) -> Result<(bool, String)> {
 	let cmd_args = [&["run"], &[ss3_sub_cmd], args].concat();
 
-	let output = exec_output(
+	let (success, out) = exec_output(
 		"cargo",
 		&cmd_args,
 		&ExecConfig {
@@ -25,7 +25,7 @@ pub fn exec_ss3(ss3_sub_cmd: &str, args: &[&str], print_exec: bool) -> Result<(b
 		},
 	)?;
 
-	Ok(output)
+	Ok((success, out.trim().to_string()))
 }
 
 struct ExecConfig {

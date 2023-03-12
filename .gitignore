@@ -1,4 +1,9 @@
 .*
 !.gitignore
 
+# Commit .config/nextest.toml.
+.config/*
+!.config/
+!.config/nextest.toml
+
 target/

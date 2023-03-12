@@ -4,8 +4,7 @@
 pub use self::bucket_ops::{create_bucket, delete_bucket, list_buckets};
 pub use self::cp::CpOptions;
 pub use self::cp::OverMode;
-pub use self::cred::get_sbucket;
-pub use self::cred::new_s3_client;
+pub use self::cred::{get_sbucket, new_s3_client, RegionProfile};
 pub use self::list::{ListInfo, ListOptions, ListResult};
 pub use self::sbucket::{SBucket, SBucketConfig};
 pub use self::sitem::{SItem, SItemType};

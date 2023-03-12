@@ -1,10 +1,10 @@
 use clap::{crate_version, Arg, ArgAction, Command};
 
-pub const ARG_REGION: &str = "recursive";
+pub const ARG_REGION: &str = "region";
+pub const ARG_PROFILE: (&str, char) = ("profile", 'p');
 pub const ARG_RECURSIVE: (&str, char) = ("recursive", 'r');
 pub const ARG_PATH_1: &str = "path_1";
 pub const ARG_PATH_2: &str = "path_2";
-pub const ARG_PROFILE: (&str, char) = ("profile", 'p');
 pub const ARG_EXCLUDE: &str = "exclude";
 pub const ARG_INCLUDE: &str = "include";
 pub const ARG_NOEXT_CT: &str = "noext-ct";
@@ -13,7 +13,7 @@ pub const ARG_OVER: &str = "over";
 pub fn cmd_app() -> Command {
 	Command::new("ss3")
 		.version(crate_version!())
-		.arg(arg_profile())
+		.args(args_region_profile())
 		.subcommand(sub_ls())
 		.subcommand(sub_cp())
 		.subcommand(sub_rm())
@@ -21,10 +21,11 @@ pub fn cmd_app() -> Command {
 		.subcommand(sub_rb())
 }
 
+// region:    --- Sub Commands
 fn sub_ls() -> Command {
 	Command::new("ls")
 		.about("List from s3 url")
-		.arg(arg_profile())
+		.args(args_region_profile())
 		.arg(arg_path_1())
 		.arg(arg_include())
 		.arg(arg_exlude())
@@ -46,21 +47,21 @@ fn sub_ls() -> Command {
 fn sub_mb() -> Command {
 	Command::new("mb")
 		.about("Creates an S3 bucket. e.g., `ss3 mb ss3://my-bucket`")
-		.arg(arg_profile())
+		.args(args_region_profile())
 		.arg(arg_path_1())
 }
 
 fn sub_rb() -> Command {
 	Command::new("rb")
 		.about("Delete an S3 bucket. e.g., `ss3 rb ss3://my-bucket`")
-		.arg(arg_profile())
+		.args(args_region_profile())
 		.arg(arg_path_1())
 }
 
 fn sub_cp() -> Command {
 	Command::new("cp")
 		.about("Copy from s3 url / file path to s3 url / file path")
-		.arg(arg_profile())
+		.args(args_region_profile())
 		.arg(arg_path_1())
 		.arg(arg_path_2())
 		.arg(arg_include())
@@ -78,9 +79,10 @@ fn sub_cp() -> Command {
 fn sub_rm() -> Command {
 	Command::new("rm")
 		.about("Delete a S3 object by it's URL")
-		.arg(arg_profile())
+		.args(args_region_profile())
 		.arg(arg_path_1())
 }
+// endregion: --- Sub Commands
 
 // region:    --- Common Args
 fn arg_path_1() -> Arg {
@@ -103,21 +105,20 @@ fn arg_recursive() -> Arg {
 		.help("Specify to list all keys recursively")
 }
 
-fn arg_profile() -> Arg {
-	Arg::new(ARG_PROFILE.0)
-		.required(false)
-		.num_args(1)
-		.short(ARG_PROFILE.1)
-		.long(ARG_PROFILE.0)
-		.help("The profile to use if no bucket environment credentials.")
-}
-
-fn arg_region() -> Arg {
-	Arg::new(ARG_REGION)
-		.required(false)
-		.num_args(1)
-		.long(ARG_REGION)
-		.help("The region to use for this command (override profile/env region).")
+fn args_region_profile() -> [Arg; 2] {
+	[
+		Arg::new(ARG_PROFILE.0)
+			.required(false)
+			.num_args(1)
+			.short(ARG_PROFILE.1)
+			.long(ARG_PROFILE.0)
+			.help("The profile to use if no bucket environment credentials."),
+		Arg::new(ARG_REGION)
+			.required(false)
+			.num_args(1)
+			.long(ARG_REGION)
+			.help("The region to use for this command (override profile/env region)."),
+	]
 }
 // endregion: --- Common Args
 

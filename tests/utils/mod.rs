@@ -4,7 +4,7 @@
 pub use exec::exec_ss3;
 
 // --- Imports
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use std::path::Path;
 use std::str::Lines;
 use std::sync::Mutex;
@@ -14,6 +14,7 @@ mod exec;
 
 // region:    --- Consts
 pub const FILE_FIXTURE_IMAGE_01: &str = "./tests-data/fixtures/fixture-01/image-01.jpg";
+pub const FILE_FIXTURE_01_DIR: &str = "./tests-data/fixtures/fixture-01/";
 // endregion: --- Consts
 
 // region:    --- Fixture
@@ -38,6 +39,43 @@ pub fn lazy_init_fixture() -> Result<()> {
 	Ok(())
 }
 // endregion: --- Fixture
+
+// region:    --- S3 Utils
+
+pub fn create_bucket(bucket_url: &str) -> Result<()> {
+	exec_ss3("mb", &[bucket_url], false)?;
+	Ok(())
+}
+
+pub fn delete_bucket(bucket_url: &str) -> Result<()> {
+	delete_folder(bucket_url)?;
+	let (ok, out) = exec_ss3("rb", &[bucket_url], false)?;
+
+	Ok(())
+}
+
+pub fn delete_folder(s3_url: &str) -> Result<()> {
+	let (_, out) = exec_ss3("ls", &[s3_url, "-r"], false)?;
+	let bucket_url = get_bucket_url(s3_url)?;
+	for item in out.x_lines() {
+		let obj_url = format!("{bucket_url}/{item}");
+		let (ok, out) = exec_ss3("rm", &[&obj_url], false)?;
+	}
+
+	Ok(())
+}
+
+pub fn get_bucket_url(s3_url: &str) -> Result<String> {
+	let bucket_name = s3_url
+		.strip_prefix("s3://")
+		.and_then(|s| s.split('/').next())
+		.filter(|s| !s.is_empty())
+		.ok_or_else(|| anyhow!("Wrong S3 URL format {}", s3_url))?;
+
+	Ok(format!("s3://{bucket_name}"))
+}
+
+// endregion: --- S3 Utils
 
 // region:    --- String Utils
 // Note: Personal best practice, "x" prefix to note that this is just private crate interface.

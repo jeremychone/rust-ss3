@@ -56,8 +56,13 @@ impl EnvType {
 	}
 }
 
-pub async fn get_sbucket(profile: Option<&str>, bucket: &str) -> Result<SBucket, Error> {
-	let client = new_s3_client(profile, Some(bucket)).await?;
+pub struct RegionProfile {
+	pub region: Option<String>,
+	pub profile: Option<String>,
+}
+
+pub async fn get_sbucket(reg_pro: RegionProfile, bucket: &str) -> Result<SBucket, Error> {
+	let client = new_s3_client(reg_pro, Some(bucket)).await?;
 	let default_ignore_files = HashSet::from_iter(DEFAULT_UPLOAD_IGNORE_FILES.map(String::from));
 	let config = SBucketConfig {
 		default_ignore_upload_names: Some(default_ignore_files),
@@ -67,8 +72,8 @@ pub async fn get_sbucket(profile: Option<&str>, bucket: &str) -> Result<SBucket,
 	Ok(sbucket)
 }
 
-pub async fn new_s3_client(profile: Option<&str>, bucket: Option<&str>) -> Result<Client, Error> {
-	let cred = load_aws_cred(profile, bucket).await?;
+pub async fn new_s3_client(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<Client, Error> {
+	let cred = load_aws_cred(reg_pro, bucket).await?;
 	let client = client_from_cred(cred)?;
 	Ok(client)
 }
@@ -91,7 +96,7 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 
 	if let Some(endpoint) = endpoint {
 		builder = builder.endpoint_url(endpoint);
-		// WORKAROUND - Right now the aws-sdk throw a NoRegion on .send if not region even if we have a endpoint
+		// WORKAROUND - Right now, the aws-sdk-s3 (v0.24) throws a NoRegion on .send if not region even if we have a endpoint.
 		builder = builder.region(Region::new("endpoint-region"));
 	}
 
@@ -114,34 +119,44 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 ///    - try SS3_BUCKET_... envs
 ///    - try the default AWS env keys
 ///    - if still not found, error
-async fn load_aws_cred(profile: Option<&str>, bucket: Option<&str>) -> Result<AwsCred, Error> {
+async fn load_aws_cred(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<AwsCred, Error> {
 	let mut cred_result: Option<AwsCred> = None;
 
+	// TODO: Need to determine if we need to check if we have a profile first before doing the bucket load.
+
+	// -- Try to get it from the bucket env
 	if let Some(bucket) = bucket {
 		// first, try to get it from the SS3_BUCKET_bucket_name_KEY_ID, ... environments
 		cred_result = load_aws_cred_from_ss3_bucket_env(bucket).await.ok();
 	}
 
-	// if not found
+	// -- If not bucket env, then, go by profile if specified.
 	if cred_result.is_none() {
 		// if we have a profile defined
-		if let Some(profile) = profile {
+		if let Some(profile) = &reg_pro.profile {
 			// try to get it from the SS3_PROFILE_profile_name_KEY_ID, ... environments
 			cred_result = load_aws_cred_from_ss3_profile_env(profile).await.ok();
 
-			// then, try to get it from the aws config files
+			// if not found in SS3_PROFILE... envs, try to get it from the aws config files
 			if cred_result.is_none() {
 				cred_result = load_aws_cred_from_aws_profile_configs(profile).await.ok();
 			}
 		}
 	}
 
-	// if still not found, try the default AWS env
+	// -- Last fall back standard aws envs
 	if cred_result.is_none() {
 		cred_result = load_aws_cred_from_default_aws_env().await.ok();
 	}
 
-	cred_result.ok_or_else(|| Error::NoCredentialsFoundForBucket(bucket.map(|s| s.to_string())))
+	let mut cred = cred_result.ok_or_else(|| Error::NoCredentialsFoundForBucket(bucket.map(|s| s.to_string())))?;
+
+	// -- If reg_pro as a region, override the one found (arg take precendence)
+	if reg_pro.region.is_some() {
+		cred.region = reg_pro.region
+	}
+
+	Ok(cred)
 }
 
 /// Attempt to create AwsCred from SS3 BUCKET environment variables

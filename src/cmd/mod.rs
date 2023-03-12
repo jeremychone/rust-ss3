@@ -1,7 +1,8 @@
-use crate::cmd::app::cmd_app;
+use crate::cmd::app::{cmd_app, ARG_REGION};
 use crate::prelude::*;
 use crate::s3w::{
 	create_bucket, delete_bucket, get_sbucket, list_buckets, new_s3_client, CpOptions, ListInfo, ListOptions, ListResult, OverMode,
+	RegionProfile,
 };
 use crate::spath::{S3Url, SPath};
 use crate::{s, Error, CT_HTML, CT_TEXT};
@@ -23,14 +24,24 @@ pub async fn cmd_run() -> Result<()> {
 			Some((_, sub)) => sub.get_one::<String>(ARG_PROFILE.0),
 			_ => None,
 		})
-		.map(String::as_str);
+		.map(String::from);
+
+	let region = argm
+		.get_one::<String>(ARG_REGION)
+		.or_else(|| match &argm.subcommand() {
+			Some((_, sub)) => sub.get_one::<String>(ARG_REGION),
+			_ => None,
+		})
+		.map(String::from);
+
+	let reg_pro = RegionProfile { region, profile };
 
 	match argm.subcommand() {
-		Some(("ls", sub_cmd)) => exec_ls(profile, sub_cmd).await?,
-		Some(("cp", sub_cmd)) => exec_cp(profile, sub_cmd).await?,
-		Some(("rm", sub_cmd)) => exec_rm(profile, sub_cmd).await?,
-		Some(("mb", sub_cmd)) => exec_mb(profile, sub_cmd).await?,
-		Some(("rb", sub_cmd)) => exec_rb(profile, sub_cmd).await?,
+		Some(("ls", sub_cmd)) => exec_ls(reg_pro, sub_cmd).await?,
+		Some(("cp", sub_cmd)) => exec_cp(reg_pro, sub_cmd).await?,
+		Some(("rm", sub_cmd)) => exec_rm(reg_pro, sub_cmd).await?,
+		Some(("mb", sub_cmd)) => exec_mb(reg_pro, sub_cmd).await?,
+		Some(("rb", sub_cmd)) => exec_rb(reg_pro, sub_cmd).await?,
 		_ => {
 			cmd_app().print_long_help()?;
 			println!("\n");
@@ -40,22 +51,22 @@ pub async fn cmd_run() -> Result<()> {
 	Ok(())
 }
 
-pub async fn exec_ls(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+pub async fn exec_ls(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 	let s3_url = argm
 		.get_one::<String>(ARG_PATH_1)
 		.ok_or(Error::CmdInvalid("This command requires a S3 url or file path"))?;
 
 	if s3_url == "s3://" {
-		exec_ls_buckets(profile);
+		exec_ls_buckets(reg_pro).await?;
 	} else {
-		exec_ls_objects(SPath::from_str(s3_url)?, profile, argm).await?;
+		exec_ls_objects(reg_pro, SPath::from_str(s3_url)?, argm).await?;
 	}
 
 	Ok(())
 }
 
-async fn exec_ls_buckets(profile: Option<&str>) -> Result<()> {
-	let client = new_s3_client(profile, None).await?;
+async fn exec_ls_buckets(reg_pro: RegionProfile) -> Result<()> {
+	let client = new_s3_client(reg_pro, None).await?;
 	let buckets = list_buckets(&client).await?;
 	for bucket in buckets {
 		println!("{bucket}");
@@ -63,14 +74,14 @@ async fn exec_ls_buckets(profile: Option<&str>) -> Result<()> {
 	Ok(())
 }
 
-async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+async fn exec_ls_objects(reg_pro: RegionProfile, spath: SPath, argm: &ArgMatches) -> Result<()> {
 	let s3_url = match spath {
 		SPath::S3(s3_url) => s3_url,
-		SPath::File(_) => return Err(Error::CmdInvalid("The 'ls' command requires a S3 url")),
+		SPath::File(_) => return Err(Error::CmdInvalid("The 'ls' command requires a S3 url.")),
 	};
 
 	// build the bucket
-	let bucket = get_sbucket(profile, s3_url.bucket()).await?;
+	let bucket = get_sbucket(reg_pro, s3_url.bucket()).await?;
 
 	// build the option (take ownership of the continuation_token)
 	let mut options = ListOptions::from_argm(argm)?;
@@ -88,7 +99,7 @@ async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches)
 	while {
 		options.continuation_token = continuation_token;
 
-		// execute the list
+		// -- Execute the bucket.list command
 		let ListResult {
 			prefixes,
 			objects,
@@ -97,11 +108,12 @@ async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches)
 
 		// -- Do the prints
 		// Print prefixes (dirs) first
+		// Note: When recursive, the list of prefixes is not given by the aws sdk
 		for item in prefixes.iter() {
 			println!("{}", item.key);
 		}
 
-		// Print objects
+		// -- Print objects
 		for item in objects.iter() {
 			total_objects += 1;
 			total_size += item.size;
@@ -119,7 +131,7 @@ async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches)
 
 		// -- Condition to continue
 		continuation_token = next_continuation_token;
-		continuation_token.is_some()
+		continuation_token.is_some() // will continue the while loop if not none
 	} {} // this is the way to do `do while` in rust
 
 	if let Some(ListInfo::InfoOnly | ListInfo::WithInfo) = options.info {
@@ -138,11 +150,11 @@ async fn exec_ls_objects(spath: SPath, profile: Option<&str>, argm: &ArgMatches)
 	Ok(())
 }
 
-pub async fn exec_mb(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+pub async fn exec_mb(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 	let s3_url = get_s3_url_1(argm)?;
 	let bucket_name = s3_url.bucket();
 
-	let client = new_s3_client(profile, Some(bucket_name)).await?;
+	let client = new_s3_client(reg_pro, Some(bucket_name)).await?;
 	let bucket_created = create_bucket(&client, bucket_name).await?;
 	if let Some(bucket_created) = bucket_created {
 		println!("Bucket Created: {bucket_created}");
@@ -151,18 +163,18 @@ pub async fn exec_mb(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 	Ok(())
 }
 
-pub async fn exec_rb(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+pub async fn exec_rb(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 	let s3_url = get_s3_url_1(argm)?;
 	let bucket_name = s3_url.bucket();
 
-	let client = new_s3_client(profile, Some(bucket_name)).await?;
+	let client = new_s3_client(reg_pro, Some(bucket_name)).await?;
 	delete_bucket(&client, bucket_name).await?;
 	println!("Bucket Deleted: {bucket_name}");
 
 	Ok(())
 }
 
-pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+pub async fn exec_cp(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 	let url_1 = get_path_1(argm)?;
 	let url_2 = get_path_2(argm)?;
 
@@ -172,7 +184,7 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 		// DOWNLOAD
 		(SPath::S3(src_s3), SPath::File(dst_path)) => {
 			// build the bucket
-			let src_bucket = get_sbucket(profile, src_s3.bucket()).await?;
+			let src_bucket = get_sbucket(reg_pro, src_s3.bucket()).await?;
 			// perform the copy
 			src_bucket.download_path(src_s3.key(), &dst_path, opts).await?;
 		}
@@ -185,7 +197,7 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 			}
 
 			// get the destination sbucket
-			let dst_bucket = get_sbucket(profile, dst_s3.bucket()).await?;
+			let dst_bucket = get_sbucket(reg_pro, dst_s3.bucket()).await?;
 			// perform the copy
 			dst_bucket.upload_path(&src_path, dst_s3.key(), opts).await?;
 		}
@@ -198,10 +210,10 @@ pub async fn exec_cp(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
 	Ok(())
 }
 
-pub async fn exec_rm(profile: Option<&str>, argm: &ArgMatches) -> Result<()> {
+pub async fn exec_rm(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 	let s3_url = get_s3_url_1(argm)?;
 
-	let bucket = get_sbucket(profile, s3_url.bucket()).await?;
+	let bucket = get_sbucket(reg_pro, s3_url.bucket()).await?;
 
 	bucket.delete_object(s3_url.key()).await?;
 	println!("Object Deleted: {s3_url}");
