@@ -1,5 +1,5 @@
 use anyhow::Result;
-use utils::{create_bucket, delete_folder, exec_ss3, XString, FILE_FIXTURE_01_DIR, FILE_FIXTURE_IMAGE_01};
+use utils::{create_bucket, delete_s3_folder, exec_ss3, XString, FILE_FIXTURE_01_DIR, FILE_FIXTURE_IMAGE_01};
 
 mod utils;
 
@@ -9,17 +9,17 @@ const TEST_CP_UPLOAD_BUCKET: &str = "s3://test-cp-upload-bucket";
 fn test_cp_upload_file_to_key() -> Result<()> {
 	// FIXTURE
 	let s3_base_dir = format!("{TEST_CP_UPLOAD_BUCKET}/test_cp_upload_file_to_key/");
-	let args = &[FILE_FIXTURE_IMAGE_01, &s3_base_dir];
-	let s3_object_url = format!("{s3_base_dir}{}", FILE_FIXTURE_IMAGE_01.x_file_name());
+	let s3_object_url = format!("{s3_base_dir}test-image.jpg");
+	let args = &[FILE_FIXTURE_IMAGE_01, &s3_object_url];
 
-	// EXEC
-	let (cp_out, _ls_out) = base_test_and_clean_cp(&s3_base_dir, args, 1)?;
+	// EXEC-CHECK-CLEAN
+	let (cp_out, _ls_out) = base_tcc_cp_upload(&s3_base_dir, args, 1)?;
 
-	// CHECK -- Addtiional check
-	assert!(cp_out.contains(&s3_object_url));
-
-	// CLEAN
-	delete_folder(&s3_base_dir)?;
+	// CHECK -- Additional check
+	assert!(
+		cp_out.contains(&s3_object_url),
+		"Should contain: {s3_object_url}\nbut contained: {cp_out}"
+	);
 
 	Ok(())
 }
@@ -31,7 +31,7 @@ fn test_cp_upload_file_to_s3dir() -> Result<()> {
 	let args = &[FILE_FIXTURE_IMAGE_01, &s3_base_dir];
 
 	// EXEC-CHECK-CLEAN
-	let (cp_out, _ls_out) = base_test_and_clean_cp(&s3_base_dir, args, 1)?;
+	let (cp_out, _ls_out) = base_tcc_cp_upload(&s3_base_dir, args, 1)?;
 
 	// CHECK - Addional check on cp_out
 	assert!(cp_out.contains(&s3_base_dir), "ss3 cp output should contain {s3_base_dir}");
@@ -48,31 +48,55 @@ fn test_cp_upload_dir_non_recursive() -> Result<()> {
 	let args = &[FILE_FIXTURE_01_DIR, &s3_base_dir];
 
 	// EXEC-CHECK-CLEAN
-	base_test_and_clean_cp(&s3_base_dir, args, 2)?;
+	base_tcc_cp_upload(&s3_base_dir, args, 2)?;
 
 	Ok(())
 }
 
 #[test]
-fn test_cp_upload_dir_recursive() -> Result<()> {
+fn test_cp_upload_dir_recursive_all() -> Result<()> {
 	// FIXTURE
 	let s3_base_dir = format!("{TEST_CP_UPLOAD_BUCKET}/test_cp_upload_dir_recursive/");
 	let args = &[FILE_FIXTURE_01_DIR, &s3_base_dir, "-r"];
 
 	// EXEC-CHECK-CLEAN
-	base_test_and_clean_cp(&s3_base_dir, args, 4)?;
+	base_tcc_cp_upload(&s3_base_dir, args, 4)?;
 
 	Ok(())
 }
 
-// region:    --- Base Test Functions
+#[test]
+fn test_cp_upload_dir_recursive_includes_txt() -> Result<()> {
+	// FIXTURE
+	let s3_base_dir = format!("{TEST_CP_UPLOAD_BUCKET}/test_cp_upload_dir_recursive_includes_txt/");
+	let args = &[FILE_FIXTURE_01_DIR, &s3_base_dir, "-r", "-i", "*.txt"];
 
-/// Base test for the cp tests.
+	// EXEC-CHECK-CLEAN
+	base_tcc_cp_upload(&s3_base_dir, args, 3)?;
+
+	Ok(())
+}
+
+#[test]
+fn test_cp_upload_dir_recursive_excludes_txt() -> Result<()> {
+	// FIXTURE
+	let s3_base_dir = format!("{TEST_CP_UPLOAD_BUCKET}/test_cp_upload_dir_recursive_excludes_txt/");
+	let args = &[FILE_FIXTURE_01_DIR, &s3_base_dir, "-r", "-e", "*.txt"];
+
+	// EXEC-CHECK-CLEAN - Should have only 1 file
+	base_tcc_cp_upload(&s3_base_dir, args, 1)?;
+
+	Ok(())
+}
+
+// region:    --- Utils
+
+/// Base test-check-clean for the cp upload test.
 /// - Exec the ss3 cp with the args,
 /// - Do the expected_count check with as ss3 ls -r from the s3_base_dir
 /// - Clean the s3_base_dir
 /// - Return the (cp_output, ls_ouput) tuple for dditional check
-fn base_test_and_clean_cp(s3_base_dir: &str, args: &[&str], expected_count: usize) -> Result<(String, String)> {
+fn base_tcc_cp_upload(s3_base_dir: &str, args: &[&str], expected_count: usize) -> Result<(String, String)> {
 	create_bucket(TEST_CP_UPLOAD_BUCKET)?;
 
 	// EXEC
@@ -90,8 +114,9 @@ fn base_test_and_clean_cp(s3_base_dir: &str, args: &[&str], expected_count: usiz
 	);
 
 	// CLEAN
-	delete_folder(s3_base_dir)?;
+	delete_s3_folder(s3_base_dir)?;
 
 	Ok((cp_out, ls_out))
 }
-// endregion: --- Base Test Functions
+
+// endregion: --- Utils

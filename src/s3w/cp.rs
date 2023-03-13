@@ -12,16 +12,17 @@ use std::path::Path;
 use tokio_stream::StreamExt;
 use walkdir::WalkDir;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum OverMode {
+	/// Overwrite no matter what.
 	Write,
+
+	/// Skip if exists.
+	#[default]
 	Skip,
+
+	/// Fail if exists.
 	Fail,
-}
-impl Default for OverMode {
-	fn default() -> Self {
-		OverMode::Skip
-	}
 }
 
 #[derive(Default)]
@@ -48,7 +49,7 @@ impl SBucket {
 		}
 		// When copying all file from a directory (recursive if opts.recursive)
 		else if src_path.is_dir() {
-			let max_depth = if opts.recursive { ::std::usize::MAX } else { 1 };
+			let max_depth = if opts.recursive { usize::MAX } else { 1 };
 			let walker = WalkDir::new(src_path).max_depth(max_depth).into_iter();
 			for entry in walker.filter_map(|e| e.ok()) {
 				let file = entry.path();
@@ -58,7 +59,8 @@ impl SBucket {
 				}
 			}
 		}
-		// if not file or dir, we fail for now. Needs to decide what to do with symlink
+		// If not file or dir, we fail for now.
+		// TODO: Needs to decide what to do with symlink
 		else {
 			return Err(Error::FilePathNotFound(src_path.to_string_lossy().to_string()));
 		}

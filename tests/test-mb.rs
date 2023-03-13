@@ -1,38 +1,37 @@
-use crate::utils::exec_ss3;
+use crate::utils::{exec_ss3, get_test_bucket};
 use anyhow::Result;
-use serial_test::serial;
 
 mod utils;
 
-const TEST_MB_BUCKET: &str = "s3://test-mb-bucket";
-
 #[test]
-#[serial(test_mb)]
 fn test_mb_success_simple_create() -> Result<()> {
 	// FIXTURE -- Make sure it is deleted
-	exec_ss3("rb", &[TEST_MB_BUCKET], false)?;
+	let (bucket_url, bucket_name) = get_test_bucket("test_mb_success_simple_create");
 
 	// EXEC
-	let (success, out) = exec_ss3("mb", &[TEST_MB_BUCKET], false)?;
+	let (success, out) = exec_ss3("mb", &[&bucket_url], false)?;
 
 	// CHECK
 	assert!(success, "mb success");
-	assert!(out.contains("test-mb-bucket"), "created bucket name");
+	assert!(
+		out.contains(&bucket_name),
+		"ss3 output should have contained '{bucket_name}' but:\n{out}"
+	);
 
 	// CLEAN
-	exec_ss3("rb", &[TEST_MB_BUCKET], false)?;
+	exec_ss3("rb", &[&bucket_url], false)?;
 
 	Ok(())
 }
 
 #[test]
-#[serial(test_mb)]
 fn test_mb_fail_already_exist() -> Result<()> {
 	// FIXTURE -- Make sure already exist
-	exec_ss3("mb", &[TEST_MB_BUCKET], false)?;
+	let (bucket_url, _bucket_name) = get_test_bucket("test_mb_fail_already_exist");
+	exec_ss3("mb", &[&bucket_url], false)?;
 
 	// EXEC
-	let (success, out) = exec_ss3("mb", &[TEST_MB_BUCKET], false)?;
+	let (success, out) = exec_ss3("mb", &[&bucket_url], false)?;
 
 	// CHECK
 	assert!(!success, "ss3 mb should have failed (but success).");
@@ -42,7 +41,7 @@ fn test_mb_fail_already_exist() -> Result<()> {
 	);
 
 	// CLEAN
-	exec_ss3("rb", &[TEST_MB_BUCKET], false)?;
+	exec_ss3("rb", &[&bucket_url], false)?;
 
 	Ok(())
 }

@@ -50,10 +50,7 @@ impl SBucket {
 		// EXECUTE - the AWS S3 request
 		let resp = match builder.send().await {
 			Ok(resp) => resp,
-			Err(err) => {
-				println!("->> ERRO {err:?}");
-				Err(err)?
-			}
+			Err(err) => Err(err)?,
 		};
 
 		// get the prefixes

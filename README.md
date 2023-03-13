@@ -10,7 +10,8 @@ Key points:
 
 > Note: Tested on Mac and Linux (might not work on Windows, for now, contribution welcome)
 
-## Install
+
+# Install
 
 ```sh
 # With Cargo install
@@ -20,7 +21,7 @@ cargo install ss3
 binst install ss3
 ```
 
-## Command Examples
+# Command Examples
 
 ```sh
 # list all buckets (assuming appropriate access)
@@ -114,4 +115,39 @@ ss3 cp s3://my-bucket/image-01.jpg ./.test-data/downloads/image-01-rename.jpg
 
 # DOWNLOAD - cp s3 folder to local dir
 ss3 cp s3://my-bucket/ ./.test-data/downloads/
+```
+
+
+# Dev & Test
+
+`ss3` integration tests run with both `cargo test` or `cargo nextest run`. 
+
+
+
+`Terminal 1`
+
+Pre-requisite for test, run minio as such: 
+
+```sh
+docker run --name minio_1 --rm \
+  -p 9000:9000 \
+  -p 9900:9900 \
+  -e "MINIO_ROOT_USER=minio" \
+  -e "MINIO_ROOT_PASSWORD=miniominio" \
+  minio/minio server /data --console-address :9900
+```
+
+Then, you can go to the minio web console if you want: http://127.0.0.1:9900/
+
+
+
+`Terminal 2`
+
+And run the test with `cargo test` or `cargo nextest run`: 
+```sh
+cargo run test
+
+# Or, with nextest
+cargo nextest run
+# This requires to have installed cargo-nextest: https://nexte.st/book/installation.html
 ```

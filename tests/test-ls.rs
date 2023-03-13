@@ -2,21 +2,20 @@
 //! Note: Those tests not need to have #[serial] as it is read global fixtures only.
 
 use anyhow::Result;
-use utils::{exec_ss3, lazy_init_fixture, XString};
+use utils::{exec_ss3, lazy_init_fixtures, XString, S3_FIXTURES_BUCKET, S3_FIXTURE_01_DIR};
 
 mod utils;
 
 #[test]
 fn test_ls_base() -> Result<()> {
 	// FIXTURE
-	lazy_init_fixture()?;
+	lazy_init_fixtures()?;
 
 	// EXEC
-	let (success, out) = exec_ss3("ls", &["s3://my-bucket/"], true)?;
+	let (_, out) = exec_ss3("ls", &[S3_FIXTURES_BUCKET], true)?;
 
 	// CHECK
-	println!("->> out: {success} \n{out}");
-	assert!(out.x_has_line("fixtures/"), "'fixtures/' was not found");
+	assert!(out.x_has_line("fixture-01/"), "'fixture-01/' was not found");
 
 	Ok(())
 }
@@ -24,10 +23,10 @@ fn test_ls_base() -> Result<()> {
 #[test]
 fn test_ls_fixture_01_count_base() -> Result<()> {
 	// FIXTURE
-	lazy_init_fixture()?;
+	lazy_init_fixtures()?;
 
 	// EXEC
-	let (_, out) = exec_ss3("ls", &["s3://my-bucket/fixtures/fixture-01/"], true)?;
+	let (_, out) = exec_ss3("ls", &[S3_FIXTURE_01_DIR], true)?;
 
 	// CHECK
 	// NOTE: With non recursive, the "folder" in the base path will be returned.
@@ -39,10 +38,10 @@ fn test_ls_fixture_01_count_base() -> Result<()> {
 #[test]
 fn test_ls_fixture_01_count_recursive() -> Result<()> {
 	// FIXTURE
-	lazy_init_fixture()?;
+	lazy_init_fixtures()?;
 
 	// EXEC
-	let (_, out) = exec_ss3("ls", &["s3://my-bucket/fixtures/fixture-01/", "-r"], true)?;
+	let (_, out) = exec_ss3("ls", &[S3_FIXTURE_01_DIR, "-r"], true)?;
 
 	// CHECK
 	// NOTE: With recursive, the 'folder' are not returned.
@@ -54,10 +53,10 @@ fn test_ls_fixture_01_count_recursive() -> Result<()> {
 #[test]
 fn test_ls_fixture_01_count_includes_txt() -> Result<()> {
 	// FIXTURE
-	lazy_init_fixture()?;
+	lazy_init_fixtures()?;
 
 	// EXEC
-	let (_, out) = exec_ss3("ls", &["s3://my-bucket/fixtures/fixture-01/", "-r", "-i", "*.txt"], true)?;
+	let (_, out) = exec_ss3("ls", &[S3_FIXTURE_01_DIR, "-r", "-i", "*.txt"], true)?;
 
 	// CHECK
 	// NOTE: With recursive, the 'folder' are not returned.
@@ -69,10 +68,10 @@ fn test_ls_fixture_01_count_includes_txt() -> Result<()> {
 #[test]
 fn test_ls_fixture_01_count_excludes_txt() -> Result<()> {
 	// FIXTURE
-	lazy_init_fixture()?;
+	lazy_init_fixtures()?;
 
 	// EXEC
-	let (_, out) = exec_ss3("ls", &["s3://my-bucket/fixtures/fixture-01/", "-r", "-e", "*.txt"], true)?;
+	let (_, out) = exec_ss3("ls", &[S3_FIXTURE_01_DIR, "-r", "-e", "*.txt"], true)?;
 
 	// CHECK
 	// NOTE: With recursive, the 'folder' are not returned.
@@ -84,13 +83,13 @@ fn test_ls_fixture_01_count_excludes_txt() -> Result<()> {
 #[test]
 fn test_ls_fixture_01_count_includes_multiple() -> Result<()> {
 	// FIXTURE
-	lazy_init_fixture()?;
+	lazy_init_fixtures()?;
 
 	// EXEC
 	let (_, out) = exec_ss3(
 		// CHECK
 		"ls",
-		&["s3://my-bucket/fixtures/fixture-01/", "-r", "-i", "**/sub*.*", "-i", "*.jpg"],
+		&[S3_FIXTURE_01_DIR, "-r", "-i", "**/sub*.*", "-i", "*.jpg"],
 		true,
 	)?;
 	// NOTE: With recursive, the 'folder' are not returned.

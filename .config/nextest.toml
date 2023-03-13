@@ -1,14 +1,1 @@
-[test-groups]
-# Note: Here we create a group per test suite to make sure each test suite can run in parallel
-test_rb = { max-threads = 1 }
-test_mb = { max-threads = 1 }
-# test_cp_upload can be multi threaded.
-# test_ls can be multi threaded.
-
-[[profile.default.overrides]]
-filter = 'test(test_rb)'
-test-group = 'test_rb'
-
-[[profile.default.overrides]]
-filter = 'test(test_mb)'
-test-group = 'test_mb'
+# Note: At this point, no nextest configuration required to run those test.
