@@ -1,8 +1,8 @@
 use super::{
 	compute_dst_key, compute_dst_path, compute_inex, get_file_name, path_type, Inex, ListOptions, ListResult, PathType, SBucket, SItem,
 };
-use crate::{s, Error};
-use aws_sdk_s3::types::ByteStream;
+use crate::{s, Error, Result};
+use aws_sdk_s3::primitives::ByteStream;
 use globset::GlobSet;
 use std::collections::{HashSet, VecDeque};
 use std::fs::{create_dir_all, File};
@@ -41,7 +41,7 @@ impl SBucket {
 	/// - TODO - add support for rename (when prefix has same extension as file and src_path is a file)
 	/// - DECIDE - if prefix should end with '/' to denote a directory prefix rather than a file rename (with not extension)
 	///            This could be done with a options.force_prefix_as_file_key or something similar
-	pub async fn upload_path(&self, src_path: &Path, prefix: &str, opts: CpOptions) -> Result<(), Error> {
+	pub async fn upload_path(&self, src_path: &Path, prefix: &str, opts: CpOptions) -> Result<()> {
 		// When copy only a given file
 		if src_path.is_file() {
 			let key = compute_dst_key(None, src_path, prefix, true)?;
@@ -69,7 +69,7 @@ impl SBucket {
 	}
 
 	/// Lower level function that upload a single file to a fully resolved key
-	async fn upload_file(&self, src_file: &Path, key: &str, opts: &CpOptions) -> Result<(), Error> {
+	async fn upload_file(&self, src_file: &Path, key: &str, opts: &CpOptions) -> Result<()> {
 		// --- Make sure it is a file
 		if !src_file.is_file() {
 			panic!("CODE-ERROR - sbucket.upload_file should only get a file object. Code error.");
@@ -128,7 +128,7 @@ impl SBucket {
 
 /// "cp download" Implementation
 impl SBucket {
-	pub async fn download_path(&self, base_key: &str, dst_path: &Path, opts: CpOptions) -> Result<(), Error> {
+	pub async fn download_path(&self, base_key: &str, dst_path: &Path, opts: CpOptions) -> Result<()> {
 		let key_path = Path::new(base_key);
 		match (path_type(key_path), path_type(dst_path)) {
 			// S3 File to Path File or Dir
@@ -207,7 +207,7 @@ impl SBucket {
 		Ok(())
 	}
 
-	async fn download_file(&self, key: &str, dst_file: &Path, opts: &CpOptions) -> Result<(), Error> {
+	async fn download_file(&self, key: &str, dst_file: &Path, opts: &CpOptions) -> Result<()> {
 		match compute_inex(key, &opts.includes, &opts.excludes) {
 			Inex::Include => {
 				if validate_over_for_file_dest(dst_file, opts)? {
@@ -245,7 +245,7 @@ impl SBucket {
 	}
 }
 
-async fn validate_over_for_s3_dest(sbucket: &SBucket, key: &str, opts: &CpOptions) -> Result<bool, Error> {
+async fn validate_over_for_s3_dest(sbucket: &SBucket, key: &str, opts: &CpOptions) -> Result<bool> {
 	match opts.over {
 		// if over: Write, then always true, we overwrite
 		OverMode::Write => Ok(true),
@@ -262,7 +262,7 @@ async fn validate_over_for_s3_dest(sbucket: &SBucket, key: &str, opts: &CpOption
 	}
 }
 
-fn validate_over_for_file_dest(file: &Path, opts: &CpOptions) -> Result<bool, Error> {
+fn validate_over_for_file_dest(file: &Path, opts: &CpOptions) -> Result<bool> {
 	match opts.over {
 		// if over: Write, then always true, we overwrite
 		OverMode::Write => Ok(true),

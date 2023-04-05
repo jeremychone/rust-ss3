@@ -1,8 +1,14 @@
-use aws_sdk_s3::error::{
-	CreateBucketError, DeleteBucketError, DeleteObjectError, GetObjectError, HeadObjectError, ListBucketsError, ListObjectsV2Error,
-	PutObjectError,
-};
-use aws_sdk_s3::types::SdkError;
+use aws_sdk_s3::error::SdkError;
+use aws_sdk_s3::operation::create_bucket::CreateBucketError;
+use aws_sdk_s3::operation::delete_bucket::DeleteBucketError;
+use aws_sdk_s3::operation::delete_object::DeleteObjectError;
+use aws_sdk_s3::operation::get_object::GetObjectError;
+use aws_sdk_s3::operation::head_object::HeadObjectError;
+use aws_sdk_s3::operation::list_buckets::ListBucketsError;
+use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
+use aws_sdk_s3::operation::put_object::PutObjectError;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -88,8 +94,8 @@ pub enum Error {
 	#[error(transparent)]
 	InvalidEndpoint(#[from] aws_config::endpoint::error::InvalidEndpointError),
 
-	#[error("AWS SDK ERROR:\n       Code: {0}\n    Message: {1}")]
-	AwsSdkErrorWrapper(String, String),
+	#[error("AWS SDK ERROR:\n       Code: {code}\n    Message: {message}")]
+	AwsSdkErrorWrapper { code: String, message: String },
 
 	//
 	#[error(transparent)]
@@ -102,9 +108,10 @@ macro_rules! impl_from_sdk_error {
 impl From<SdkError<$ie>> for Error {
 	fn from(val: SdkError<$ie>) -> Self {
 		let se = val.into_service_error();
-		let code = se.code().unwrap_or_default().to_string();
-		let message = se.message().unwrap_or_default().to_string();
-		Error::AwsSdkErrorWrapper(code, message)
+		let em = se.meta();
+		let code = em.code().unwrap_or("NO_CODE").to_string();
+		let message = em.message().unwrap_or_default().to_string();
+		Error::AwsSdkErrorWrapper { code, message }
 	}
 }
 		)*

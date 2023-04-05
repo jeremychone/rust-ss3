@@ -1,4 +1,4 @@
-use aws_sdk_s3::model::{CommonPrefix, Object};
+use aws_sdk_s3::types::{CommonPrefix, Object};
 
 // region:    --- S3Item
 #[derive(Debug)]

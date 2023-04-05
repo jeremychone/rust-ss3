@@ -1,16 +1,19 @@
-use cmd::cmd_run;
+// -- Re-Export
+pub use self::error::{Error, Result};
+pub use consts::*;
+pub use std::format as f;
 
+// -- Imports
+use cmd::cmd_run;
+use std::process::ExitCode;
+
+// -- Sub-Modules
 mod cmd;
 mod consts;
 mod error;
 mod prelude;
 mod s3w;
 mod spath;
-
-pub use consts::*;
-pub use error::Error;
-pub use std::format as f;
-use std::process::ExitCode;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

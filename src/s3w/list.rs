@@ -1,6 +1,6 @@
 use super::sitem::SItem;
 use super::{validate_key, SBucket};
-use crate::Error;
+use crate::Result;
 use globset::GlobSet;
 
 // region:    --- ListOptions
@@ -34,7 +34,7 @@ pub struct ListResult {
 // endregion: --- ListResult
 
 impl SBucket {
-	pub async fn list(&self, prefix: &str, options: &ListOptions) -> Result<ListResult, Error> {
+	pub async fn list(&self, prefix: &str, options: &ListOptions) -> Result<ListResult> {
 		// BUILD - the aws S3 list request
 		let mut builder = self
 			.client

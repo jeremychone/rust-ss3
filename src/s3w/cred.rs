@@ -1,14 +1,15 @@
-use crate::{Error, DEFAULT_UPLOAD_IGNORE_FILES};
+use crate::s3w::SBucket;
+use crate::s3w::SBucketConfig;
+use crate::{Error, Result, DEFAULT_UPLOAD_IGNORE_FILES};
 use aws_config::profile::profile_file::ProfileFiles;
 use aws_config::profile::Profile;
 use aws_sdk_s3::config::Builder;
-use aws_sdk_s3::{Client, Credentials, Region};
+use aws_sdk_s3::config::Credentials;
+use aws_sdk_s3::config::Region;
+use aws_sdk_s3::Client;
 use aws_types::os_shim_internal::{Env, Fs};
 use std::collections::HashSet;
 use std::env;
-
-use super::SBucket;
-use super::SBucketConfig;
 
 // Default AWS environement names (used as last fallback)
 const AWS_ACCESS_KEY_ID: &str = "AWS_ACCESS_KEY_ID";
@@ -61,7 +62,7 @@ pub struct RegionProfile {
 	pub profile: Option<String>,
 }
 
-pub async fn get_sbucket(reg_pro: RegionProfile, bucket: &str) -> Result<SBucket, Error> {
+pub async fn get_sbucket(reg_pro: RegionProfile, bucket: &str) -> Result<SBucket> {
 	let client = new_s3_client(reg_pro, Some(bucket)).await?;
 	let default_ignore_files = HashSet::from_iter(DEFAULT_UPLOAD_IGNORE_FILES.map(String::from));
 	let config = SBucketConfig {
@@ -72,13 +73,13 @@ pub async fn get_sbucket(reg_pro: RegionProfile, bucket: &str) -> Result<SBucket
 	Ok(sbucket)
 }
 
-pub async fn new_s3_client(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<Client, Error> {
+pub async fn new_s3_client(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<Client> {
 	let cred = load_aws_cred(reg_pro, bucket).await?;
 	let client = client_from_cred(cred)?;
 	Ok(client)
 }
 
-fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
+fn client_from_cred(aws_cred: AwsCred) -> Result<Client> {
 	let AwsCred {
 		key_id,
 		key_secret,
@@ -119,7 +120,7 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client, Error> {
 ///    - try SS3_BUCKET_... envs
 ///    - try the default AWS env keys
 ///    - if still not found, error
-async fn load_aws_cred(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<AwsCred, Error> {
+async fn load_aws_cred(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<AwsCred> {
 	let mut cred_result: Option<AwsCred> = None;
 
 	// TODO: Need to determine if we need to check if we have a profile first before doing the bucket load.
@@ -164,7 +165,7 @@ async fn load_aws_cred(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<A
 /// - `SS3_BUCKET_bucket_name_KEY_SECRET`
 /// - `SS3_BUCKET_bucket_name_REGION`
 /// - `SS3_BUCKET_bucket_name_ENDPOINT`
-async fn load_aws_cred_from_ss3_bucket_env(bucket: &str) -> Result<AwsCred, Error> {
+async fn load_aws_cred_from_ss3_bucket_env(bucket: &str) -> Result<AwsCred> {
 	let key_id = get_env(&get_env_name(EnvType::Bucket, CredKey::Id, bucket))?;
 	let key_secret = get_env(&get_env_name(EnvType::Bucket, CredKey::Secret, bucket))?;
 	let region = get_env(&get_env_name(EnvType::Bucket, CredKey::Region, bucket)).ok();
@@ -183,7 +184,7 @@ async fn load_aws_cred_from_ss3_bucket_env(bucket: &str) -> Result<AwsCred, Erro
 /// - `SS3_PROFILE_profile_name_KEY_SECRET`
 /// - `SS3_PROFILE_profile_name_REGION`
 /// - `SS3_PROFILE_profile_name_ENDPOINT`
-async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred, Error> {
+async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred> {
 	let key_id = get_env(&get_env_name(EnvType::Profile, CredKey::Id, profile))?;
 	let key_secret = get_env(&get_env_name(EnvType::Profile, CredKey::Secret, profile))?;
 	let region = get_env(&get_env_name(EnvType::Profile, CredKey::Region, profile)).ok();
@@ -197,7 +198,7 @@ async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred, Er
 	})
 }
 
-async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<AwsCred, Error> {
+async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<AwsCred> {
 	let (fs, ev) = (Fs::real(), Env::default());
 	let profiles = aws_config::profile::load(&fs, &ev, &ProfileFiles::default(), None).await;
 	if let Ok(profiles) = profiles {
@@ -219,7 +220,7 @@ async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<Aws
 	Err(Error::NoCredentialsForProfile(profile_str.to_string()))
 }
 
-async fn load_aws_cred_from_default_aws_env() -> Result<AwsCred, Error> {
+async fn load_aws_cred_from_default_aws_env() -> Result<AwsCred> {
 	let key_id = get_env(AWS_ACCESS_KEY_ID)?;
 	let key_secret = get_env(AWS_SECRET_ACCESS_KEY)?;
 	let region = get_env(AWS_DEFAULT_REGION).ok();
@@ -239,14 +240,14 @@ fn get_env_name(typ: EnvType, key: CredKey, name: &str) -> String {
 	format!("{}_{}_{}", typ.env_part(), name, key.env_part())
 }
 
-fn get_profile_value(profile: &Profile, key: &str) -> Result<String, Error> {
+fn get_profile_value(profile: &Profile, key: &str) -> Result<String> {
 	match profile.get(key) {
 		Some(value) => Ok(value.to_string()),
 		None => Err(Error::NoCredentialConfig(key.to_string())),
 	}
 }
 
-fn get_env(name: &str) -> Result<String, Error> {
+fn get_env(name: &str) -> Result<String> {
 	match env::var(name) {
 		Ok(v) => Ok(v),
 		Err(_) => Err(Error::NoCredentialEnv(name.to_string())),

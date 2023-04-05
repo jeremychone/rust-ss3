@@ -10,7 +10,7 @@ pub use self::sbucket::{SBucket, SBucketConfig};
 pub use self::sitem::{SItem, SItemType};
 
 // --- Imports
-use crate::Error;
+use crate::{Error, Result};
 use globset::GlobSet;
 use pathdiff::diff_paths;
 use std::path::{Path, PathBuf};
@@ -59,7 +59,7 @@ fn validate_key(key: &str, includes: &Option<GlobSet>, excludes: &Option<GlobSet
 /// Compute the destination key given the eventual base_dir and src_file
 /// * `dst_prefix` - the base prefix (directory like) or potentially the target key if renamable true
 /// * `renamable` - when this flag, if the dst_prefix has a extension same as src_file (case insensitive)
-fn compute_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str, renamable: bool) -> Result<String, Error> {
+fn compute_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str, renamable: bool) -> Result<String> {
 	let file_name = src_file
 		.file_name()
 		.and_then(|s| s.to_str())
@@ -98,7 +98,7 @@ fn compute_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str, r
 
 /// Compute the destination file path given a base key and object key
 /// Note: For now simple substring
-fn compute_dst_path(base_key: &str, object_key: &str, base_dir: &Path) -> Result<PathBuf, Error> {
+fn compute_dst_path(base_key: &str, object_key: &str, base_dir: &Path) -> Result<PathBuf> {
 	// validate params
 	if !object_key.starts_with(base_key) {
 		panic!(
@@ -114,7 +114,7 @@ fn compute_dst_path(base_key: &str, object_key: &str, base_dir: &Path) -> Result
 }
 
 /// Determine if a key a directory (end with '/')
-fn get_file_name(path: &Path) -> Result<String, Error> {
+fn get_file_name(path: &Path) -> Result<String> {
 	path
 		.file_name()
 		.and_then(|s| s.to_str().map(|v| v.to_string()))

@@ -122,8 +122,6 @@ ss3 cp s3://my-bucket/ ./.test-data/downloads/
 
 `ss3` integration tests run with both `cargo test` or `cargo nextest run`. 
 
-
-
 `Terminal 1`
 
 Pre-requisite for test, run minio as such: 
@@ -145,7 +143,7 @@ Then, you can go to the minio web console if you want: http://127.0.0.1:9900/
 
 And run the test with `cargo test` or `cargo nextest run`: 
 ```sh
-cargo run test
+cargo test
 
 # Or, with nextest
 cargo nextest run

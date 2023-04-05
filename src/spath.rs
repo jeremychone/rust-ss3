@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::Result;
 use core::fmt;
 use regex::Regex;
 use std::path::{Path, PathBuf};
@@ -10,7 +11,7 @@ pub enum SPath {
 }
 
 impl SPath {
-	pub fn from_str(path: &str) -> Result<SPath, Error> {
+	pub fn from_str(path: &str) -> Result<SPath> {
 		if path.starts_with("s3://") {
 			Ok(SPath::S3(S3Url::from_url(path)?))
 		} else {
@@ -43,7 +44,7 @@ impl S3Url {
 
 /// Builders
 impl S3Url {
-	pub fn from_url(url: &str) -> Result<Self, Error> {
+	pub fn from_url(url: &str) -> Result<Self> {
 		let rx = Regex::new(r"s3://([^:/\s]+)(.*)").expect("Invalid S3Url parsing regex");
 
 		let caps = rx

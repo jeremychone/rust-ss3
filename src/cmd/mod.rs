@@ -1,11 +1,10 @@
 use crate::cmd::app::{cmd_app, ARG_REGION};
-use crate::prelude::*;
 use crate::s3w::{
 	create_bucket, delete_bucket, get_sbucket, list_buckets, new_s3_client, CpOptions, ListInfo, ListOptions, ListResult, OverMode,
 	RegionProfile,
 };
 use crate::spath::{S3Url, SPath};
-use crate::{s, Error, CT_HTML, CT_TEXT};
+use crate::{s, Error, Result, CT_HTML, CT_TEXT};
 use app::{ARG_NOEXT_CT, ARG_OVER, ARG_PATH_1, ARG_PATH_2, ARG_PROFILE, ARG_RECURSIVE};
 use clap::ArgMatches;
 use file_size::fit_4;
