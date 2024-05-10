@@ -30,6 +30,7 @@ pub const S3_FIXTURE_01_DIR: &str = "s3://test-fixtures/fixture-01/";
 static INIT_DONE: Mutex<bool> = Mutex::new(false);
 
 /// Returns the s3 url of the fixtures bucket
+/// NOTE: Probably need to use serial_test
 pub fn lazy_init_fixtures() -> Result<&'static str> {
 	let mut init_done = INIT_DONE.lock().unwrap();
 	if !*init_done {

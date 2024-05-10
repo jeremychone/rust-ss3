@@ -1,6 +1,6 @@
 [package]
 name = "ss3"
-version = "0.1.2"
+version = "0.2.0-rc.1"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -34,12 +34,13 @@ mime_guess = "2"
 tokio-stream = "0.1"
 file-size = "1"
 # -- Aws libs
-aws-sdk-s3 = "0.25"
-aws-config = "0.55"
-aws-types = "0.55"
-aws-smithy-http = "0.55"
+aws-config = "1.4"
+aws-runtime = "1.2"
+aws-sdk-s3 = "1.28"
+aws-smithy-http = "0.60"
+aws-types = "1.2"
 # -- Others
-http = "0.2" 
+http = "1.1" 
 
 [dev-dependencies]
 # serial_test = "1" # Not used anymore

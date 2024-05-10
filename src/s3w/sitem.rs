@@ -22,7 +22,7 @@ impl SItem {
 		SItem {
 			key,
 			typ: SItemType::Object,
-			size,
+			size: size.unwrap_or(-1),
 		}
 	}
 

@@ -108,7 +108,7 @@ fn base_tcc_cp_upload(s3_base_dir: &str, args: &[&str], expected_count: usize) -
 	assert!(success, "success");
 	// check expected_count
 	let (success, ls_out) = exec_ss3("ls", &[s3_base_dir, "-r"], false)?;
-	assert!(success, "ls should be success");
+	assert!(success, "cp should be success");
 	assert_eq!(
 		ls_out.x_lines().count(),
 		expected_count,

@@ -26,7 +26,19 @@ pub fn exec_ss3(ss3_sub_cmd: &str, args: &[&str], print_exec: bool) -> Result<(b
 			..ExecConfig::default()
 		},
 	)?;
-
+	if !success {
+		// NOTE: If we have a mb and the error contains 'BucketAlreadyOwnedByYou' it's fine for test
+		if !(ss3_sub_cmd == "mb" && out.contains("BucketAlreadyOwnedByYou")) {
+			println!(
+				r#"TEST FAIL AT EXEC_SS3
+  COMMAND: {ss3_sub_cmd} {}
+  CAUSE: {}
+		"#,
+				args.join(" "),
+				out
+			);
+		}
+	}
 	Ok((success, out.trim().to_string()))
 }
 

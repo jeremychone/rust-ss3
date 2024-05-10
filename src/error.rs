@@ -88,12 +88,13 @@ pub enum Error {
 	#[error(transparent)]
 	InvalidUri(#[from] http::uri::InvalidUri),
 
+	// aws_sdk_s3::primitives::ByteStreamError
 	#[error(transparent)]
-	ByteStream(#[from] aws_smithy_http::byte_stream::error::Error),
+	ByteStream(#[from] aws_sdk_s3::primitives::ByteStreamError),
 
-	#[error(transparent)]
-	InvalidEndpoint(#[from] aws_config::endpoint::error::InvalidEndpointError),
-
+	// #[error(transparent)]
+	// InvalidEndpoint(#[from] aws_config::endpoint::error::InvalidEndpointError),
+	//
 	#[error("AWS SDK ERROR:\n       Code: {code}\n    Message: {message}")]
 	AwsSdkErrorWrapper { code: String, message: String },
 

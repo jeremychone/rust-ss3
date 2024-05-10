@@ -56,7 +56,6 @@ impl SBucket {
 		// get the prefixes
 		let prefixes: Vec<SItem> = resp
 			.common_prefixes()
-			.unwrap_or_default()
 			.iter()
 			.filter(|o| {
 				o.prefix()
@@ -69,7 +68,6 @@ impl SBucket {
 		// get the objects
 		let objects: Vec<SItem> = resp
 			.contents()
-			.unwrap_or_default()
 			.iter()
 			.filter(|o| {
 				o.key()

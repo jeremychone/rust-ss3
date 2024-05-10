@@ -1,8 +1,8 @@
 use crate::s3w::SBucket;
 use crate::s3w::SBucketConfig;
 use crate::{Error, Result, DEFAULT_UPLOAD_IGNORE_FILES};
-use aws_config::profile::profile_file::ProfileFiles;
 use aws_config::profile::Profile;
+use aws_runtime::env_config::file::EnvConfigFiles;
 use aws_sdk_s3::config::Builder;
 use aws_sdk_s3::config::Credentials;
 use aws_sdk_s3::config::Region;
@@ -93,7 +93,7 @@ fn client_from_cred(aws_cred: AwsCred) -> Result<Client> {
 		return Err(Error::MissingConfigMustHaveEndpointOrRegion);
 	}
 
-	let mut builder = Builder::new().credentials_provider(cred);
+	let mut builder = Builder::new().credentials_provider(cred).behavior_version_latest();
 
 	if let Some(endpoint) = endpoint {
 		builder = builder.endpoint_url(endpoint);
@@ -200,7 +200,7 @@ async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred> {
 
 async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<AwsCred> {
 	let (fs, ev) = (Fs::real(), Env::default());
-	let profiles = aws_config::profile::load(&fs, &ev, &ProfileFiles::default(), None).await;
+	let profiles = aws_config::profile::load(&fs, &ev, &EnvConfigFiles::default(), None).await;
 	if let Ok(profiles) = profiles {
 		if let Some(profile) = profiles.get_profile(profile_str) {
 			let key_id = get_profile_value(profile, "aws_access_key_id")?;
