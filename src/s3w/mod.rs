@@ -1,21 +1,8 @@
 //! AWS API Wrapper
 
-// --- Re-exports
-pub use self::bucket_ops::{create_bucket, delete_bucket, list_buckets};
-pub use self::cp::CpOptions;
-pub use self::cp::OverMode;
-pub use self::cred::{get_sbucket, new_s3_client, RegionProfile};
-pub use self::list::{ListInfo, ListOptions, ListResult};
-pub use self::sbucket::{SBucket, SBucketConfig};
-pub use self::sitem::{SItem, SItemType};
+// region:    --- Modules
 
-// --- Imports
-use crate::{Error, Result};
-use globset::GlobSet;
-use pathdiff::diff_paths;
-use std::path::{Path, PathBuf};
-
-// --- Sub Modules
+// -- Sub-modules
 mod bucket_ops;
 mod cp;
 mod cred;
@@ -23,6 +10,25 @@ mod list;
 mod rm;
 mod sbucket;
 mod sitem;
+
+// -- Re-exports
+pub use self::bucket_ops::{create_bucket, delete_bucket, list_buckets};
+pub use self::cp::CpOptions;
+pub use self::cp::OverMode;
+pub use self::cred::{get_sbucket, new_s3_client, RegionProfile};
+pub use self::list::{ListInfo, ListOptions, ListResult};
+pub use self::sbucket::{SBucket, SBucketConfig};
+pub use self::sitem::SItem;
+
+// -- Imports
+use crate::{Error, Result};
+use globset::GlobSet;
+use pathdiff::diff_paths;
+use std::path::{Path, PathBuf};
+
+// endregion: --- Modules
+
+// --- Imports
 
 // region:    --- Includes/Excludes Utils
 /// Inclusion/Exclusion result

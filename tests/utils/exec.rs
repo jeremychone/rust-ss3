@@ -1,4 +1,6 @@
-use anyhow::Result;
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>; // For early dev.
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};

@@ -1,4 +1,4 @@
-///! Global constants
+//! Global constants
 
 pub const DEFAULT_UPLOAD_IGNORE_FILES: &[&str; 1] = &[".DS_Store"];
 pub const CT_HTML: &str = "text/html; charset=UTF-8";

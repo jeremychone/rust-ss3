@@ -17,25 +17,31 @@ repository = "https://github.com/jeremychone/rust-ss3"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+# unused = "allow" # For exploratory dev.
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 clap =  {version = "4", features = ["cargo"]}
 thiserror = "1"
 regex = "1"
 globset = "0.4"
-# File libs
+# -- File libs
 pathdiff = "0.2"
 walkdir = "2"
 mime_guess = "2"
 tokio-stream = "0.1"
 file-size = "1"
-# Aws libs
+# -- Aws libs
 aws-sdk-s3 = "0.25"
 aws-config = "0.55"
 aws-types = "0.55"
 aws-smithy-http = "0.55"
+# -- Others
 http = "0.2" 
 
 [dev-dependencies]
-anyhow = "1"
 # serial_test = "1" # Not used anymore
+
+

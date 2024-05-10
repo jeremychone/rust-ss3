@@ -1,4 +1,13 @@
-// -- Re-Export
+// region:    --- Modules
+
+// -- Sub-modules
+mod cmd;
+mod consts;
+mod error;
+mod s3w;
+mod spath;
+
+// -- Re-exports
 pub use self::error::{Error, Result};
 pub use consts::*;
 pub use std::format as f;
@@ -7,13 +16,7 @@ pub use std::format as f;
 use cmd::cmd_run;
 use std::process::ExitCode;
 
-// -- Sub-Modules
-mod cmd;
-mod consts;
-mod error;
-mod prelude;
-mod s3w;
-mod spath;
+// endregion: --- Modules
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

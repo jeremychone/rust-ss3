@@ -1,7 +1,9 @@
-use crate::utils::{exec_ss3, get_test_bucket};
-use anyhow::Result;
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>; // For early dev.
 
 mod utils;
+
+use crate::utils::{exec_ss3, get_test_bucket};
 
 #[test]
 fn test_mb_success_simple_create() -> Result<()> {

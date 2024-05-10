@@ -1,10 +1,12 @@
 //!
 //! Note: Those tests not need to have #[serial] as it is read global fixtures only.
-
-use anyhow::Result;
-use utils::{exec_ss3, lazy_init_fixtures, XString, S3_FIXTURES_BUCKET, S3_FIXTURE_01_DIR};
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>; // For early dev.
 
 mod utils;
+
+use crate::utils::XString;
+use utils::{exec_ss3, lazy_init_fixtures, S3_FIXTURES_BUCKET, S3_FIXTURE_01_DIR};
 
 #[test]
 fn test_ls_base() -> Result<()> {

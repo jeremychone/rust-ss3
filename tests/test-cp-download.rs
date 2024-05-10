@@ -1,15 +1,17 @@
-use anyhow::{bail, Result};
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>; // For early dev.
+
+mod utils;
+
 use std::fs::{create_dir_all, remove_dir_all};
 use std::path::{Path, PathBuf};
 use utils::{exec_ss3, lazy_init_fixtures, S3_FIXTURE_01_DIR};
 use walkdir::WalkDir;
 
-mod utils;
-
 const TEST_CP_DOWNLOAD_BASE_DIR: &str = "./tests-data/.tmp/test-cp-download-base-dir/";
 
 #[test]
-fn test_cp_download_s3_dir_flat() -> anyhow::Result<()> {
+fn test_cp_download_s3_dir_flat() -> Result<()> {
 	let (dir_path, dir_str) = get_test_dir("test_cp_download_s3_dir_flat");
 
 	// EXEC-CHECK-CLEAN
@@ -31,7 +33,7 @@ fn test_cp_download_s3_dir_flat() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_cp_download_recursive_all() -> anyhow::Result<()> {
+fn test_cp_download_recursive_all() -> Result<()> {
 	let (dir_path, dir_str) = get_test_dir("test_cp_download_recursive_all");
 
 	// EXEC-CHECK-CLEAN
@@ -53,7 +55,7 @@ fn test_cp_download_recursive_all() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_cp_download_recursive_exclude_txt() -> anyhow::Result<()> {
+fn test_cp_download_recursive_exclude_txt() -> Result<()> {
 	let (dir_path, dir_str) = get_test_dir("test_cp_download_recursive_exclude_txt");
 
 	// EXEC-CHECK-CLEAN
@@ -121,7 +123,7 @@ fn safer_remove_dir_all(path: &Path) -> Result<()> {
 	let path = path.canonicalize()?;
 
 	if !path.to_str().unwrap().contains("/tests-data/.tmp") {
-		bail!("Unsafe to delete path: {:?}", path);
+		return Err(format!("Unsafe to delete path: {:?}", path).into());
 	} else {
 		remove_dir_all(path)?;
 	}

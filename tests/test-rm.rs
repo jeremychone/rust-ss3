@@ -1,7 +1,9 @@
-use anyhow::Result;
-use utils::{exec_ss3, list_s3_folder, upload_fixture_01};
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>; // For early dev.
 
 mod utils;
+
+use utils::{exec_ss3, list_s3_folder, upload_fixture_01};
 
 const TEST_RM_BUCKET: &str = "s3://test-rm-bucket";
 

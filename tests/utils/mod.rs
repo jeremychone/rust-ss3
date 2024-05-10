@@ -1,16 +1,22 @@
-#![allow(unused)] // For test utils
+#![allow(unused)]
+
+// region:    --- Modules
+
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>; // For early dev.
+
+// -- Sub-modules
+mod exec;
 
 // --- Re-exports
 pub use exec::exec_ss3;
 
 // --- Imports
-use anyhow::{anyhow, bail, Result};
 use std::path::Path;
 use std::str::Lines;
 use std::sync::Mutex;
 
-// --- Sub-Modules
-mod exec;
+// endregion: --- Modules
 
 // region:    --- Consts
 pub const FILE_FIXTURE_IMAGE_01: &str = "./tests-data/fixtures/fixture-01/image-01.jpg";
@@ -88,7 +94,7 @@ pub fn get_bucket_from_s3_url(s3_url: &str) -> Result<String> {
 		.strip_prefix("s3://")
 		.and_then(|s| s.split('/').next())
 		.filter(|s| !s.is_empty())
-		.ok_or_else(|| anyhow!("Wrong S3 URL format {}", s3_url))?;
+		.ok_or_else(|| format!("Wrong S3 URL format {}", s3_url))?;
 
 	Ok(format!("s3://{bucket_name}"))
 }
@@ -97,7 +103,7 @@ pub fn get_bucket_from_s3_url(s3_url: &str) -> Result<String> {
 pub fn list_s3_folder(s3_url: &str) -> Result<(usize, String)> {
 	let (success, out) = exec_ss3("ls", &[s3_url, "-r"], false)?;
 	if !success {
-		bail!("Fail to do ss3 ls {s3_url}. Cause:\n {out}");
+		return Err(format!("Fail to do ss3 ls {s3_url}. Cause:\n {out}").into());
 	}
 	let count = out.trim().split('\n').count();
 	Ok((count, out))

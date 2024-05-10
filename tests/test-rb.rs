@@ -1,7 +1,9 @@
-use crate::utils::{exec_ss3, get_test_bucket, XString, FILE_FIXTURE_IMAGE_01};
-use anyhow::Result;
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>; // For early dev.
 
 mod utils;
+
+use crate::utils::{exec_ss3, get_test_bucket, XString, FILE_FIXTURE_IMAGE_01};
 
 #[test]
 fn test_rb_success_empty() -> Result<()> {

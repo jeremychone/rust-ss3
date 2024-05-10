@@ -1,3 +1,9 @@
+// region:    --- Modules
+
+// -- Sub-modules
+mod app;
+
+// -- Imports
 use crate::cmd::app::{cmd_app, ARG_REGION};
 use crate::s3w::{
 	create_bucket, delete_bucket, get_sbucket, list_buckets, new_s3_client, CpOptions, ListInfo, ListOptions, ListResult, OverMode,
@@ -11,7 +17,7 @@ use file_size::fit_4;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::collections::HashMap;
 
-mod app;
+// endregion: --- Modules
 
 pub async fn cmd_run() -> Result<()> {
 	let argm = cmd_app().get_matches();
@@ -228,7 +234,7 @@ fn get_s3_url_1(argm: &ArgMatches) -> Result<S3Url> {
 	let spath = SPath::from_str(path)?;
 
 	let SPath::S3(s3_url) = spath else {
-		return Err(Error::NotValidS3Url(path.to_string()))
+		return Err(Error::NotValidS3Url(path.to_string()));
 	};
 
 	Ok(s3_url)
