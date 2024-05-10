@@ -6,11 +6,15 @@ mod consts;
 mod error;
 mod s3w;
 mod spath;
+mod utils;
 
 // -- Re-exports
 pub use self::error::{Error, Result};
 pub use consts::*;
 pub use std::format as f;
+
+#[cfg(test)]
+mod _test_support;
 
 // -- Imports
 use cmd::cmd_run;

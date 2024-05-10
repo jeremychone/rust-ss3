@@ -1,6 +1,4 @@
-use crate::s3w::SBucket;
-use crate::s3w::SBucketConfig;
-use crate::{Error, Result, DEFAULT_UPLOAD_IGNORE_FILES};
+use crate::{Error, Result};
 use aws_config::profile::Profile;
 use aws_runtime::env_config::file::EnvConfigFiles;
 use aws_sdk_s3::config::Builder;
@@ -8,7 +6,6 @@ use aws_sdk_s3::config::Credentials;
 use aws_sdk_s3::config::Region;
 use aws_sdk_s3::Client;
 use aws_types::os_shim_internal::{Env, Fs};
-use std::collections::HashSet;
 use std::env;
 
 // Default AWS environement names (used as last fallback)
@@ -17,12 +14,25 @@ const AWS_SECRET_ACCESS_KEY: &str = "AWS_SECRET_ACCESS_KEY";
 const AWS_DEFAULT_REGION: &str = "AWS_DEFAULT_REGION";
 const AWS_ENDPOINT: &str = "AWS_ENDPOINT";
 
-#[derive(Debug)]
-struct AwsCred {
-	key_id: String,
-	key_secret: String,
-	region: Option<String>,
-	endpoint: Option<String>,
+#[derive(Clone)]
+pub struct AwsCred {
+	pub key_id: String,
+	pub key_secret: String,
+	pub region: Option<String>,
+	pub endpoint: Option<String>,
+}
+
+// implement Debug but redact secret
+impl std::fmt::Debug for AwsCred {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"AwsCred {{ key_id: {}, key
+		_secret: REDACTED, region: {:?}, endpoint
+		: {:?} }}",
+			self.key_id, self.region, self.endpoint
+		)
+	}
 }
 
 enum CredKey {
@@ -62,24 +72,13 @@ pub struct RegionProfile {
 	pub profile: Option<String>,
 }
 
-pub async fn get_sbucket(reg_pro: RegionProfile, bucket: &str) -> Result<SBucket> {
-	let client = new_s3_client(reg_pro, Some(bucket)).await?;
-	let default_ignore_files = HashSet::from_iter(DEFAULT_UPLOAD_IGNORE_FILES.map(String::from));
-	let config = SBucketConfig {
-		default_ignore_upload_names: Some(default_ignore_files),
-	};
-	let sbucket = SBucket::from_client_and_name(client, bucket.to_string(), Some(config));
-
-	Ok(sbucket)
-}
-
 pub async fn new_s3_client(reg_pro: RegionProfile, bucket: Option<&str>) -> Result<Client> {
 	let cred = load_aws_cred(reg_pro, bucket).await?;
 	let client = client_from_cred(cred)?;
 	Ok(client)
 }
 
-fn client_from_cred(aws_cred: AwsCred) -> Result<Client> {
+pub fn client_from_cred(aws_cred: AwsCred) -> Result<Client> {
 	let AwsCred {
 		key_id,
 		key_secret,

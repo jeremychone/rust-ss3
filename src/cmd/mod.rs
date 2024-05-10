@@ -300,8 +300,9 @@ impl CpOptions {
 		let over = match argm.get_one::<String>(ARG_OVER).map(|v| v.as_str()) {
 			Some("write") => OverMode::Write,
 			Some("skip") => OverMode::Skip,
+			Some("etag") => OverMode::Etag,
 			Some("fail") => OverMode::Fail,
-			Some(other) => panic!("Invalid over mode {}. Must be 'write', 'skip', 'fail'", other),
+			Some(other) => panic!("Invalid over mode {}. Must be 'write', 'skip', 'etag', 'fail'", other),
 			None => OverMode::default(),
 		};
 

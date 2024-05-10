@@ -72,7 +72,7 @@ fn sub_cp() -> Command {
 			Arg::new(ARG_OVER)
 				.long("over")
 				.num_args(1)
-				.help("Overwrite mode. Default 'skip'. Can be 'skip', 'write', 'fail'"),
+				.help("Overwrite mode. Default 'skip'. Can be 'skip', 'etag', 'write', 'fail'"),
 		)
 }
 

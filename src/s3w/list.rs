@@ -26,6 +26,8 @@ impl ListOptions {
 		}
 	}
 }
+
+#[derive(Debug)]
 pub struct ListResult {
 	pub prefixes: Vec<SItem>,
 	pub objects: Vec<SItem>,

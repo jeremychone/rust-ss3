@@ -1,3 +1,4 @@
+use crate::utils;
 use aws_sdk_s3::error::SdkError;
 use aws_sdk_s3::operation::create_bucket::CreateBucketError;
 use aws_sdk_s3::operation::delete_bucket::DeleteBucketError;
@@ -12,12 +13,18 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	// -- Generic
 	#[error("Static error: {0}")]
 	Static(&'static str),
 
 	#[error("Generic error: {0}")]
 	Generic(String),
 
+	// -- Get
+	#[error("Cannot find S3 object at key '{key}'")]
+	S3ObjectNotFound { key: String },
+
+	// -- Uncategorized
 	#[error("Not a valid s3 url '{0}'. Should be format 's3://bucket_name[/path/to/object]'")]
 	NotValidS3Url(String),
 
@@ -85,6 +92,11 @@ pub enum Error {
 	#[error("This command is not valid. Cause: {0}")]
 	ComamndInvalid(&'static str),
 
+	// -- Utils
+	#[error(transparent)]
+	Md5(#[from] utils::md5::Error),
+
+	// -- Externals
 	#[error(transparent)]
 	InvalidUri(#[from] http::uri::InvalidUri),
 

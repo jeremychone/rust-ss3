@@ -3,34 +3,64 @@
 // region:    --- Modules
 
 // -- Sub-modules
-mod bucket_ops;
-mod cp;
-mod cred;
+
+mod cp_download;
+mod cp_upload;
+mod get;
 mod list;
 mod rm;
 mod sbucket;
 mod sitem;
+mod support;
 
 // -- Re-exports
 pub use self::bucket_ops::{create_bucket, delete_bucket, list_buckets};
-pub use self::cp::CpOptions;
-pub use self::cp::OverMode;
-pub use self::cred::{get_sbucket, new_s3_client, RegionProfile};
+pub use self::cred::{new_s3_client, AwsCred, RegionProfile};
 pub use self::list::{ListInfo, ListOptions, ListResult};
 pub use self::sbucket::{SBucket, SBucketConfig};
 pub use self::sitem::SItem;
+pub use crate::s3w::support::{CpOptions, OverMode};
+
+pub mod bucket_ops;
+pub mod cred;
 
 // -- Imports
-use crate::{Error, Result};
+use crate::s3w::cred::client_from_cred;
+use crate::{Error, Result, DEFAULT_UPLOAD_IGNORE_FILES};
+use aws_sdk_s3::Client;
 use globset::GlobSet;
 use pathdiff::diff_paths;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 // endregion: --- Modules
 
-// --- Imports
+// region:    --- SBucket factory
+
+pub async fn get_sbucket(reg_pro: RegionProfile, bucket: &str) -> Result<SBucket> {
+	let client = new_s3_client(reg_pro, Some(bucket)).await?;
+	get_sbucket_from_client(client, bucket).await
+}
+
+#[allow(unused)]
+pub async fn get_sbucket_from_cred(cred: AwsCred, bucket: &str) -> Result<SBucket> {
+	let client = client_from_cred(cred)?;
+	get_sbucket_from_client(client, bucket).await
+}
+
+async fn get_sbucket_from_client(client: Client, bucket: impl Into<String>) -> Result<SBucket> {
+	let default_ignore_files = HashSet::from_iter(DEFAULT_UPLOAD_IGNORE_FILES.map(String::from));
+	let config = SBucketConfig {
+		default_ignore_upload_names: Some(default_ignore_files),
+	};
+	let sbucket = SBucket::from_client_and_name(client, bucket.into(), Some(config));
+	Ok(sbucket)
+}
+
+// endregion: --- SBucket factory
 
 // region:    --- Includes/Excludes Utils
+
 /// Inclusion/Exclusion result
 enum Inex {
 	Include,
