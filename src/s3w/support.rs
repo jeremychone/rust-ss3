@@ -4,12 +4,13 @@ use super::{
 use crate::{s, Error, Result};
 use aws_sdk_s3::primitives::ByteStream;
 use globset::GlobSet;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
 use std::ops::Deref;
 use std::path::Path;
 // use tokio_stream::StreamExt;
+use crate::s3w::SItemsCache;
 use crate::utils::md5::compute_md5;
 use walkdir::WalkDir;
 
@@ -55,7 +56,13 @@ pub struct CpOptions {
 
 // endregion: --- Upload/Download Types
 
-pub(super) async fn validate_over_for_s3_dest(sbucket: &SBucket, key: &str, src_file: &Path, opts: &CpOptions) -> Result<bool> {
+pub(super) async fn validate_over_for_s3_dest(
+	sbucket: &SBucket,
+	key: &str,
+	src_file: &Path,
+	opts: &CpOptions,
+	sitems_cache: Option<&SItemsCache>,
+) -> Result<bool> {
 	match opts.over {
 		// if over: Write, then always true, we overwrite
 		OverMode::Write => Ok(true),
@@ -63,7 +70,7 @@ pub(super) async fn validate_over_for_s3_dest(sbucket: &SBucket, key: &str, src_
 		// if skip, then the opposite of the exists state
 		OverMode::Skip => Ok(!sbucket.exists(key).await),
 
-		OverMode::Etag => Ok(!check_has_and_same_etags(sbucket, key, src_file).await),
+		OverMode::Etag => Ok(!check_has_and_same_etags(sbucket, key, src_file, sitems_cache).await),
 
 		// if fail mode, then if exists fail with error
 		OverMode::Fail => {
@@ -98,8 +105,18 @@ pub(super) fn validate_over_for_file_dest(file: &Path, opts: &CpOptions) -> Resu
 }
 
 /// returns true if both s3 object and files has successful etag, and the etcat match
-async fn check_has_and_same_etags(sbucket: &SBucket, s3_key: &str, file: impl AsRef<Path>) -> bool {
-	if let (Ok(file_etag), Some(s3_etag)) = (compute_md5(file), sbucket.get_sitem(s3_key).await.ok().and_then(|i| i.etag)) {
+async fn check_has_and_same_etags(sbucket: &SBucket, s3_key: &str, file: impl AsRef<Path>, sitems_cache: Option<&SItemsCache>) -> bool {
+	// -- Get from cache or from s3 server if not found in cache
+	// A little odd block, but necessary give ownership constraints.
+	let sitem = sitems_cache.and_then(|c| c.get(s3_key));
+	let sitem_owned = if sitem.is_none() {
+		sbucket.get_sitem(s3_key).await.ok()
+	} else {
+		None
+	};
+	let sitem = sitem.or(sitem_owned.as_ref());
+
+	if let (Ok(file_etag), Some(s3_etag)) = (compute_md5(file), sitem.and_then(|i| i.etag.as_deref())) {
 		// We copy if the tags are different
 		file_etag == s3_etag
 	}

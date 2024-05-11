@@ -16,7 +16,7 @@ mod support;
 // -- Re-exports
 pub use self::bucket_ops::{create_bucket, delete_bucket, list_buckets};
 pub use self::cred::{new_s3_client, AwsCred, RegionProfile};
-pub use self::list::{ListInfo, ListOptions, ListResult};
+pub use self::list::*;
 pub use self::sbucket::{SBucket, SBucketConfig};
 pub use self::sitem::SItem;
 pub use crate::s3w::support::{CpOptions, OverMode};
@@ -96,6 +96,8 @@ fn validate_key(key: &str, includes: &Option<GlobSet>, excludes: &Option<GlobSet
 /// * `dst_prefix` - the base prefix (directory like) or potentially the target key if renamable true
 /// * `renamable` - when this flag, if the dst_prefix has a extension same as src_file (case insensitive)
 fn compute_dst_key(base_dir: Option<&Path>, src_file: &Path, dst_prefix: &str, renamable: bool) -> Result<String> {
+	let dst_prefix = dst_prefix.strip_prefix('/').unwrap_or(dst_prefix);
+
 	let file_name = src_file
 		.file_name()
 		.and_then(|s| s.to_str())

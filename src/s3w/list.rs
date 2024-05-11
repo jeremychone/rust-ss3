@@ -2,6 +2,7 @@ use super::sitem::SItem;
 use super::{validate_key, SBucket};
 use crate::Result;
 use globset::GlobSet;
+use std::collections::HashMap;
 
 // region:    --- ListOptions
 pub enum ListInfo {
@@ -33,7 +34,31 @@ pub struct ListResult {
 	pub objects: Vec<SItem>,
 	pub next_continuation_token: Option<String>,
 }
+
 // endregion: --- ListResult
+
+// region:    --- SItemsCache
+
+/// SItem by key cache
+pub struct SItemsCache {
+	sitem_by_key: HashMap<String, SItem>,
+}
+
+impl SItemsCache {
+	pub fn from(sitems: Vec<SItem>) -> Self {
+		let mut sitem_by_key = HashMap::new();
+		for sitem in sitems {
+			sitem_by_key.insert(sitem.key.clone(), sitem);
+		}
+		SItemsCache { sitem_by_key }
+	}
+
+	pub fn get(&self, key: &str) -> Option<&SItem> {
+		self.sitem_by_key.get(key)
+	}
+}
+
+// endregion: --- SItemsCache
 
 impl SBucket {
 	pub async fn list(&self, prefix: &str, options: &ListOptions) -> Result<ListResult> {
@@ -86,5 +111,11 @@ impl SBucket {
 			objects,
 			next_continuation_token,
 		})
+	}
+
+	pub async fn sitems_cache(&self, prefix: Option<&str>) -> Result<SItemsCache> {
+		let res = self.list(prefix.unwrap_or_default(), &ListOptions::new(true)).await?;
+
+		Ok(SItemsCache::from(res.objects))
 	}
 }
