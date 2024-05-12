@@ -19,7 +19,7 @@ repository = "https://github.com/jeremychone/rust-ss3"
 
 [lints.rust]
 unsafe_code = "forbid"
-unused = "allow" # For exploratory dev.
+# unused = "allow" # For exploratory dev.
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }

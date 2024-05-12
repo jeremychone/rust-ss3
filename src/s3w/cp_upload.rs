@@ -1,18 +1,10 @@
-use super::{
-	compute_dst_key, compute_dst_path, compute_inex, get_file_name, path_type, Inex, ListOptions, ListResult, PathType, SBucket, SItem,
-};
+use super::{compute_dst_key, compute_inex, Inex, SBucket};
 use crate::{s, Error, Result};
 use aws_sdk_s3::primitives::ByteStream;
-use globset::GlobSet;
-use std::collections::{HashSet, VecDeque};
-use std::fs::{create_dir_all, File};
-use std::io::{BufWriter, Write};
-use std::ops::Deref;
 use std::path::Path;
 // use tokio_stream::StreamExt;
 use crate::s3w::support::{validate_over_for_s3_dest, CpOptions, OverMode};
 use crate::s3w::SItemsCache;
-use crate::utils::md5::compute_md5;
 use walkdir::WalkDir;
 
 /// "cp upload" Implementation

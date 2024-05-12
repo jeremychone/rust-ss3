@@ -2,8 +2,6 @@
 
 use crate::_test_support::{delete_s3_folder, new_test_ss3_bucket};
 use crate::s3w::{CpOptions, ListOptions, OverMode};
-use crate::utils::md5::compute_md5;
-use std::path::Path;
 
 pub type Result<T> = core::result::Result<T, Error>;
 pub type Error = Box<dyn std::error::Error>; // For early dev.
@@ -20,22 +18,28 @@ async fn test_cp_write_etag_single_file() -> Result<()> {
 	let opts = CpOptions {
 		over: OverMode::Etag,
 		recursive: true,
+		show_skip: true,
 		..Default::default()
 	};
 
 	delete_s3_folder(&sbucket, fx_s3_folder).await?;
 
-	// first upload to make sure it is there
+	// First upload
 	for file in fx_files {
 		sbucket.upload_path(file, fx_s3_folder, opts.clone()).await?;
 	}
 
 	// -- Exec
-	// TODO: needs to do the upload again to check that etag was there
-	let res = sbucket.list("", &ListOptions::new(true)).await?;
+	// Second upload
+	for file in fx_files {
+		sbucket.upload_path(file, fx_s3_folder, opts.clone()).await?;
+	}
 
 	// -- Check
-	// TODO: need to echeck
+	// TODO: need to the check the upload etags (upload_path should return a response like
+	//       `UploadResponse { uploaded_count: u64, skip_total: u64, skip_etag: u64, ...}`)
+	let res = sbucket.list(fx_s3_folder, &ListOptions::new(true)).await?;
+	assert_eq!(res.objects.len(), 2, "Should have 2 s3 objects");
 
 	Ok(())
 }
@@ -62,9 +66,9 @@ async fn test_cp_write_etag_dir() -> Result<()> {
 	sbucket.upload_path(fx_dir, fx_s3_folder, opts.clone()).await?;
 
 	// -- Exec
-	let res = sbucket.list("", &ListOptions::new(true)).await?;
 
 	// -- Check
+	let _res = sbucket.list("", &ListOptions::new(true)).await?;
 	// TODO: need to echeck
 
 	Ok(())

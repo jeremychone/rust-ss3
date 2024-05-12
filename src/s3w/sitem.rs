@@ -51,11 +51,4 @@ impl SItem {
 	}
 }
 
-/// Getters
-impl SItem {
-	pub fn etag(&self) -> &str {
-		self.etag.as_deref().unwrap_or_default()
-	}
-}
-
 // endregion: --- S3Item

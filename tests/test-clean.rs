@@ -4,9 +4,9 @@ pub type Error = Box<dyn std::error::Error>; // For early dev.
 mod utils;
 
 use crate::utils::{copy_dir_all, delete_s3_folder};
-use simple_fs::{ensure_dir, list_files};
+use simple_fs::list_files;
 use std::fs;
-use utils::{exec_ss3, list_s3_folder, upload_fixture_01};
+use utils::{exec_ss3, list_s3_folder};
 
 const TEST_CLEAN_BUCKET: &str = "s3://test-clean-bucket";
 const LOCAL_TEST_FOLDER: &str = "./tests-data/fixtures";
@@ -25,9 +25,9 @@ fn test_clean_simple() -> Result<()> {
 
 	// EXEC - delete images
 
-	let (count, out) = exec_ss3("clean", &[fx_partial_dir, &s3_folder, "--force"], false)?;
+	let (_count, _out) = exec_ss3("clean", &[fx_partial_dir, &s3_folder, "--force"], false)?;
 	// CHECK
-	let (count, out) = list_s3_folder(&s3_folder)?;
+	let (count, _out) = list_s3_folder(&s3_folder)?;
 	assert_eq!(count, 3, "Should be list of files minus one");
 
 	Ok(())

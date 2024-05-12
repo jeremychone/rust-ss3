@@ -1,24 +1,21 @@
-**Yet another S3 command-line**, but environment variables are driven per bucket or profile credentials. 
+**Yet Another S3 Command-Line**, driven by environment variables for per-bucket or profile credentials.
 
-> Note: `v0.1.x` now has the base feature set. Still, many enhancements are possible, and we will add them as needed/requested.
+> Note: Use `v0.2.0-rc.1` as it has been updated to use AWS SDK 1.x and includes new features like `clean` and `cp ... --overwrite etag`.
 
 Key points:
-- Uses the official [AWS-SDK-S3](https://crates.io/crates/aws-sdk-s3) library.
-- Environment variables driven credentials (per bucket, per profile, fallback to AWS CLI defaults).
-- Will mimic most of the official `aws s3 ...` command line (however, does not intend to be too dogmatic)
-- Will eventually provide a lib as well. 
 
-> Note: Tested on Mac and Linux (might not work on Windows, for now, contribution welcome)
+- Utilizes the official [AWS-SDK-S3](https://crates.io/crates/aws-sdk-s3) and related AWS SDK libraries.
+- Credentials are driven by environment variables (per bucket, per profile, with fallback to AWS CLI defaults).
+- Aims to mimic most of the official `aws s3 ...` command line (however, it is not overly dogmatic).
+- Plans to eventually provide a library as well.
 
+> Note: Tested on Mac and Linux (may not work on Windows, contributions welcome).
 
 # Install
 
 ```sh
 # With Cargo install
 cargo install ss3
-
-# Or install the binary (mac or linux) with binst (https://binst.io)
-binst install ss3
 ```
 
 # Command Examples
@@ -90,7 +87,12 @@ ss3 ls s3://my-bucket
 ss3 cp ./.test-data/to-upload/image-01.jpg s3://my-bucket
 
 # UPLOAD - cp dir to s3 dir
-ss3 cp ./.test-data/to-upload/ s3://my-bucket -r
+# NOTE: By default will skip if exists on s3 (use `--over write` to ovewrite)
+ss3 cp ./.test-data/to-upload/ s3://my-bucket -r 
+
+# UPLOAD - Check etag (simple etag/md5 only, not multi-part s3 etag)
+# NOTE: For now, `--etag` is only implement on upload, not download
+ss3 cp ./.test-data/to-upload/ s3://my-bucket -r --over etag --show-skip
 
 # LIST - recursive
 ss3 ls s3://my-bucket -r --info

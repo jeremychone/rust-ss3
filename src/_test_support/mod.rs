@@ -4,28 +4,8 @@ pub type Error = Box<dyn std::error::Error>; // For early dev.
 use crate::s3w::bucket_ops::create_bucket;
 use crate::s3w::cred::client_from_cred;
 use crate::s3w::{get_sbucket_from_cred, ListOptions, SBucket};
-use std::path::Path;
-use std::{fs, io};
 
 const TEST_BUCKET: &str = "unit-test-bucket";
-
-// region:    --- FS Support
-
-pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
-	fs::create_dir_all(&dst)?;
-	for entry in fs::read_dir(src)? {
-		let entry = entry?;
-		let ty = entry.file_type()?;
-		if ty.is_dir() {
-			copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
-		} else {
-			fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
-		}
-	}
-	Ok(())
-}
-
-// endregion: --- FS Support
 
 // region:    --- S3 Support
 
