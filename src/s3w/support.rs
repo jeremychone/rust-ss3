@@ -50,6 +50,7 @@ pub struct CpOptions {
 	pub excludes: Option<GlobSet>,
 	pub includes: Option<GlobSet>,
 	pub over: OverMode,
+	pub show_skip: bool,
 	/// File with no extension content type
 	pub noext_ct: Option<String>,
 }

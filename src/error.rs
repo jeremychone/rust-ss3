@@ -24,6 +24,10 @@ pub enum Error {
 	#[error("Cannot find S3 object at key '{key}'")]
 	S3ObjectNotFound { key: String },
 
+	// -- Clean
+	#[error("Invalid clean url. Must be valid `local file path` and then `s3 url/base path` (was '{url_1}' and then '{url_2}`) ")]
+	CleanInvalidArguments { url_1: String, url_2: String },
+
 	// -- Uncategorized
 	#[error("Not a valid s3 url '{0}'. Should be format 's3://bucket_name[/path/to/object]'")]
 	NotValidS3Url(String),
@@ -100,13 +104,14 @@ pub enum Error {
 	#[error(transparent)]
 	InvalidUri(#[from] http::uri::InvalidUri),
 
+	#[error(transparent)]
+	SimpleFs(#[from] simple_fs::Error),
+
 	// aws_sdk_s3::primitives::ByteStreamError
 	#[error(transparent)]
 	ByteStream(#[from] aws_sdk_s3::primitives::ByteStreamError),
 
 	// #[error(transparent)]
-	// InvalidEndpoint(#[from] aws_config::endpoint::error::InvalidEndpointError),
-	//
 	#[error("AWS SDK ERROR:\n       Code: {code}\n    Message: {message}")]
 	AwsSdkErrorWrapper { code: String, message: String },
 

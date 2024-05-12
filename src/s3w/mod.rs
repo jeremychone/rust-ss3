@@ -4,6 +4,7 @@
 
 // -- Sub-modules
 
+mod clean;
 mod cp_download;
 mod cp_upload;
 mod get;
@@ -20,6 +21,7 @@ pub use self::list::*;
 pub use self::sbucket::{SBucket, SBucketConfig};
 pub use self::sitem::SItem;
 pub use crate::s3w::support::{CpOptions, OverMode};
+pub use clean::CleanOptions;
 
 pub mod bucket_ops;
 pub mod cred;

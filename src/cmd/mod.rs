@@ -4,10 +4,11 @@
 mod app;
 
 // -- Imports
-use crate::cmd::app::{cmd_app, ARG_REGION};
+use crate::cmd::app::{cmd_app, ARG_FORCE, ARG_REGION};
+use crate::prompt::prompt;
 use crate::s3w::{
-	create_bucket, delete_bucket, get_sbucket, list_buckets, new_s3_client, CpOptions, ListInfo, ListOptions, ListResult, OverMode,
-	RegionProfile,
+	create_bucket, delete_bucket, get_sbucket, list_buckets, new_s3_client, CleanOptions, CpOptions, ListInfo, ListOptions, ListResult,
+	OverMode, RegionProfile,
 };
 use crate::spath::{S3Url, SPath};
 use crate::{s, Error, Result, CT_HTML, CT_TEXT};
@@ -47,6 +48,8 @@ pub async fn cmd_run() -> Result<()> {
 		Some(("rm", sub_cmd)) => exec_rm(reg_pro, sub_cmd).await?,
 		Some(("mb", sub_cmd)) => exec_mb(reg_pro, sub_cmd).await?,
 		Some(("rb", sub_cmd)) => exec_rb(reg_pro, sub_cmd).await?,
+		Some(("clean", sub_cmd)) => exec_clean(reg_pro, sub_cmd).await?,
+
 		_ => {
 			cmd_app().print_long_help()?;
 			println!("\n");
@@ -168,6 +171,50 @@ pub async fn exec_mb(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 	Ok(())
 }
 
+pub async fn exec_clean(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
+	let url_1 = get_path_1(argm)?;
+	let url_2 = get_path_2(argm)?;
+
+	match (url_1, url_2) {
+		(SPath::File(src_path), SPath::S3(s3_url)) => {
+			let bucket = get_sbucket(reg_pro, s3_url.bucket()).await?;
+			let opts = CleanOptions::from_argm(argm)?;
+
+			let keys_to_delete = bucket.list_to_clean(src_path, s3_url.key()).await?;
+			// if not force, we prompt
+			let perform_delete = if !opts.force {
+				println!("Will delete {} s3 objects. List of all keys to be deleted:", keys_to_delete.len());
+				for key in keys_to_delete.iter() {
+					println!("    {key}");
+				}
+				let response = prompt(&format!(
+					"\n{} s3 objects found to delete ('YES' to delete): ",
+					keys_to_delete.len()
+				))?;
+				response == "YES"
+			} else {
+				true
+			};
+			if perform_delete {
+				for key in keys_to_delete.iter() {
+					println!("DELETING {key}");
+					bucket.delete_object(key).await?;
+				}
+			} else {
+				println!("CANCELLING delete");
+			}
+		}
+		(url_1, url_2) => {
+			return Err(Error::CleanInvalidArguments {
+				url_1: url_1.to_string(),
+				url_2: url_2.to_string(),
+			})
+		}
+	}
+
+	Ok(())
+}
+
 pub async fn exec_rb(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 	let s3_url = get_s3_url_1(argm)?;
 	let bucket_name = s3_url.bucket();
@@ -212,6 +259,8 @@ pub async fn exec_cp(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 		}
 	}
 
+	println!("DONE");
+
 	Ok(())
 }
 
@@ -225,7 +274,9 @@ pub async fn exec_rm(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()> {
 
 	Ok(())
 }
-// region:    Args Utils
+
+// region:    --- Arg Utils
+
 fn get_s3_url_1(argm: &ArgMatches) -> Result<S3Url> {
 	let path = argm
 		.get_one::<String>(ARG_PATH_1)
@@ -255,7 +306,8 @@ fn get_path_2(argm: &ArgMatches) -> Result<SPath> {
 
 	SPath::from_str(path)
 }
-// endregion: Args Utils
+
+// endregion: --- Arg Utils
 
 // region:    --- ListOptions Builder
 impl ListOptions {
@@ -286,11 +338,23 @@ impl ListOptions {
 }
 // endregion: --- ListOptions Builder
 
+// region:    --- CleanOptions
+
+impl CleanOptions {
+	fn from_argm(argm: &ArgMatches) -> Result<CleanOptions> {
+		let force = argm.get_flag(ARG_FORCE);
+		Ok(CleanOptions { force })
+	}
+}
+
+// endregion: --- CleanOptions
+
 // region:    --- CpOptions Builder
 impl CpOptions {
 	fn from_argm(argm: &ArgMatches) -> CpOptions {
 		// extract recursive flag
 		let recursive = argm.get_flag(ARG_RECURSIVE.0);
+		let show_skip = argm.get_flag("show-skip");
 
 		// extract the eventual strings
 		let excludes = build_glob_set(argm, "exclude");
@@ -318,6 +382,7 @@ impl CpOptions {
 			excludes,
 			includes,
 			over,
+			show_skip,
 			noext_ct,
 		}
 	}

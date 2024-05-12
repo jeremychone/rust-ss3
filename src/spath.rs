@@ -20,6 +20,16 @@ impl SPath {
 	}
 }
 
+impl fmt::Display for SPath {
+	// This trait requires `fmt` with this exact signature.
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			SPath::S3(s3_url) => write!(f, "{}", s3_url),
+			SPath::File(path) => write!(f, "{}", path.display()),
+		}
+	}
+}
+
 // region:    S3Url
 #[derive(Debug)]
 pub struct S3Url {

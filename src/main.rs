@@ -4,6 +4,7 @@
 mod cmd;
 mod consts;
 mod error;
+mod prompt;
 mod s3w;
 mod spath;
 mod utils;

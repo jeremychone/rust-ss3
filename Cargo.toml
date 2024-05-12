@@ -33,6 +33,7 @@ walkdir = "2"
 mime_guess = "2"
 tokio-stream = "0.1"
 file-size = "1"
+simple-fs = "0.1.3"
 # -- Aws libs
 aws-config = "1.4"
 aws-runtime = "1.2"

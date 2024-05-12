@@ -34,10 +34,6 @@ async fn test_cp_write_etag_single_file() -> Result<()> {
 	// TODO: needs to do the upload again to check that etag was there
 	let res = sbucket.list("", &ListOptions::new(true)).await?;
 
-	for obj in res.objects {
-		println!("->> {}", obj.key);
-	}
-
 	// -- Check
 	// TODO: need to echeck
 
@@ -67,11 +63,6 @@ async fn test_cp_write_etag_dir() -> Result<()> {
 
 	// -- Exec
 	let res = sbucket.list("", &ListOptions::new(true)).await?;
-
-	// println!("->> {res:?}");
-	for obj in res.objects {
-		println!("->> {}", obj.key);
-	}
 
 	// -- Check
 	// TODO: need to echeck

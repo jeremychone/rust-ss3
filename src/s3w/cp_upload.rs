@@ -68,7 +68,10 @@ impl SBucket {
 
 		if let (Some(file_name), Some(ignore_set)) = (src_file.file_name().and_then(|f| f.to_str()), &self.default_ignore_upload_names) {
 			if ignore_set.contains(file_name) {
-				println!("{:13} {file_name}", "Skip (default)");
+				if opts.show_skip {
+					println!("{:13} {file_name}", "Skip (default)");
+				}
+
 				return Ok(());
 			}
 		}
@@ -103,7 +106,7 @@ impl SBucket {
 
 						// EXECUTE - aws request
 						builder.send().await?;
-					} else {
+					} else if opts.show_skip {
 						let msg = format!("Skip ({})", opts.over.label());
 						println!("{:13} - {}", msg, self.s3_url(key));
 					}
