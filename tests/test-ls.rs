@@ -6,7 +6,7 @@ pub type Error = Box<dyn std::error::Error>; // For early dev.
 mod utils;
 
 use crate::utils::XString;
-use utils::{exec_ss3, lazy_init_fixtures, S3_FIXTURES_BUCKET, S3_FIXTURE_01_DIR};
+use utils::{S3_FIXTURE_01_DIR, S3_FIXTURES_BUCKET, exec_ss3, lazy_init_fixtures};
 
 #[test]
 fn test_ls_base() -> Result<()> {

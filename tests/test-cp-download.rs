@@ -5,7 +5,7 @@ mod utils;
 
 use std::fs::{create_dir_all, remove_dir_all};
 use std::path::{Path, PathBuf};
-use utils::{exec_ss3, lazy_init_fixtures, S3_FIXTURE_01_DIR};
+use utils::{S3_FIXTURE_01_DIR, exec_ss3, lazy_init_fixtures};
 use walkdir::WalkDir;
 
 const TEST_CP_DOWNLOAD_BASE_DIR: &str = "./tests-data/.tmp/test-cp-download-base-dir/";

@@ -1,5 +1,5 @@
-use super::sitem::SItem;
 use super::SBucket;
+use super::sitem::SItem;
 use crate::{Error, Result};
 
 impl SBucket {

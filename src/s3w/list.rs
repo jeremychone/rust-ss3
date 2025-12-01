@@ -1,5 +1,5 @@
 use super::sitem::SItem;
-use super::{validate_key, SBucket};
+use super::{SBucket, validate_key};
 use crate::Result;
 use globset::GlobSet;
 use std::collections::HashMap;

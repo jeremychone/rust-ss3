@@ -4,14 +4,14 @@
 mod app;
 
 // -- Imports
-use crate::cmd::app::{cmd_app, ARG_FORCE, ARG_REGION};
+use crate::cmd::app::{ARG_FORCE, ARG_REGION, cmd_app};
 use crate::prompt::prompt;
 use crate::s3w::{
-	create_bucket, delete_bucket, get_sbucket, list_buckets, new_s3_client, CleanOptions, CpOptions, ListInfo, ListOptions, ListResult,
-	OverMode, RegionProfile,
+	CleanOptions, CpOptions, ListInfo, ListOptions, ListResult, OverMode, RegionProfile, create_bucket, delete_bucket, get_sbucket,
+	list_buckets, new_s3_client,
 };
 use crate::spath::{S3Url, SPath};
-use crate::{s, Error, Result, CT_HTML, CT_TEXT};
+use crate::{CT_HTML, CT_TEXT, Error, Result, s};
 use app::{ARG_NOEXT_CT, ARG_OVER, ARG_PATH_1, ARG_PATH_2, ARG_PROFILE, ARG_RECURSIVE};
 use clap::ArgMatches;
 use file_size::fit_4;
@@ -208,7 +208,7 @@ pub async fn exec_clean(reg_pro: RegionProfile, argm: &ArgMatches) -> Result<()>
 			return Err(Error::CleanInvalidArguments {
 				url_1: url_1.to_string(),
 				url_2: url_2.to_string(),
-			})
+			});
 		}
 	}
 

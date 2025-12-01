@@ -1,5 +1,5 @@
-use crate::s3w::SBucket;
 use crate::Result;
+use crate::s3w::SBucket;
 
 impl SBucket {
 	pub async fn delete_object(&self, key: &str) -> Result<()> {

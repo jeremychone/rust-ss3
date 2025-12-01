@@ -1,10 +1,10 @@
 use crate::{Error, Result};
 use aws_config::profile::Profile;
 use aws_runtime::env_config::file::EnvConfigFiles;
+use aws_sdk_s3::Client;
 use aws_sdk_s3::config::Builder;
 use aws_sdk_s3::config::Credentials;
 use aws_sdk_s3::config::Region;
-use aws_sdk_s3::Client;
 use aws_types::os_shim_internal::{Env, Fs};
 use std::env;
 

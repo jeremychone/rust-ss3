@@ -3,7 +3,7 @@ pub type Error = Box<dyn std::error::Error>; // For early dev.
 
 use crate::s3w::bucket_ops::create_bucket;
 use crate::s3w::cred::client_from_cred;
-use crate::s3w::{get_sbucket_from_cred, ListOptions, SBucket};
+use crate::s3w::{ListOptions, SBucket, get_sbucket_from_cred};
 
 const TEST_BUCKET: &str = "unit-test-bucket";
 

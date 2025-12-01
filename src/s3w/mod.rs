@@ -16,7 +16,7 @@ mod support;
 
 // -- Re-exports
 pub use self::bucket_ops::{create_bucket, delete_bucket, list_buckets};
-pub use self::cred::{new_s3_client, AwsCred, RegionProfile};
+pub use self::cred::{AwsCred, RegionProfile, new_s3_client};
 pub use self::list::*;
 pub use self::sbucket::{SBucket, SBucketConfig};
 pub use self::sitem::SItem;
@@ -28,7 +28,7 @@ pub mod cred;
 
 // -- Imports
 use crate::s3w::cred::client_from_cred;
-use crate::{Error, Result, DEFAULT_UPLOAD_IGNORE_FILES};
+use crate::{DEFAULT_UPLOAD_IGNORE_FILES, Error, Result};
 use aws_sdk_s3::Client;
 use globset::GlobSet;
 use pathdiff::diff_paths;

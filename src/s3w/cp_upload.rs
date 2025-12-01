@@ -1,10 +1,10 @@
-use super::{compute_dst_key, compute_inex, Inex, SBucket};
-use crate::{s, Error, Result};
+use super::{Inex, SBucket, compute_dst_key, compute_inex};
+use crate::{Error, Result, s};
 use aws_sdk_s3::primitives::ByteStream;
 use std::path::Path;
 // use tokio_stream::StreamExt;
-use crate::s3w::support::{validate_over_for_s3_dest, CpOptions, OverMode};
 use crate::s3w::SItemsCache;
+use crate::s3w::support::{CpOptions, OverMode, validate_over_for_s3_dest};
 use walkdir::WalkDir;
 
 /// "cp upload" Implementation

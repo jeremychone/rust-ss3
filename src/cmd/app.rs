@@ -1,4 +1,4 @@
-use clap::{crate_version, Arg, ArgAction, Command};
+use clap::{Arg, ArgAction, Command, crate_version};
 
 pub const ARG_REGION: &str = "region";
 pub const ARG_PROFILE: (&str, char) = ("profile", 'p');

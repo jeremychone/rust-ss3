@@ -1,5 +1,5 @@
-use crate::s3w::{compute_dst_key, ListOptions, SBucket};
-use crate::{Result, DEFAULT_UPLOAD_IGNORE_GLOBS};
+use crate::s3w::{ListOptions, SBucket, compute_dst_key};
+use crate::{DEFAULT_UPLOAD_IGNORE_GLOBS, Result};
 use simple_fs::list_files;
 use std::collections::HashSet;
 use std::path::Path;

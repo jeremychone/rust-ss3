@@ -3,7 +3,7 @@ pub type Error = Box<dyn std::error::Error>; // For early dev.
 
 mod utils;
 
-use utils::{create_bucket, delete_s3_folder, exec_ss3, XString, FILE_FIXTURE_01_DIR, FILE_FIXTURE_IMAGE_01};
+use utils::{FILE_FIXTURE_01_DIR, FILE_FIXTURE_IMAGE_01, XString, create_bucket, delete_s3_folder, exec_ss3};
 
 const TEST_CP_UPLOAD_BUCKET: &str = "s3://test-cp-upload-bucket";
 

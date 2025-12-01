@@ -3,7 +3,7 @@ pub type Error = Box<dyn std::error::Error>; // For early dev.
 
 mod utils;
 
-use crate::utils::{exec_ss3, get_test_bucket, XString, FILE_FIXTURE_IMAGE_01};
+use crate::utils::{FILE_FIXTURE_IMAGE_01, XString, exec_ss3, get_test_bucket};
 
 #[test]
 fn test_rb_success_empty() -> Result<()> {
