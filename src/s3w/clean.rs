@@ -25,7 +25,7 @@ impl SBucket {
 		// the target s3 keys from the files
 		let target_key_set: HashSet<String> = files
 			.iter()
-			.map(|f| compute_dst_key(Some(local_path), f.path(), base_s3_path, false))
+			.map(|f| compute_dst_key(Some(local_path), f.std_path(), base_s3_path, false))
 			.collect::<Result<HashSet<_>>>()?;
 
 		// -- Build the result
