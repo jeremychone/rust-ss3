@@ -18,7 +18,7 @@ pub fn compute_md5(file_path: impl AsRef<Path>) -> Result<String, Error> {
 		context.consume(&buffer[..bytes_read]);
 	}
 
-	let result = context.compute();
+	let result = context.finalize();
 	Ok(format!("{:x}", result))
 }
 
