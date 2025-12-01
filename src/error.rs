@@ -8,46 +8,47 @@ use aws_sdk_s3::operation::head_object::HeadObjectError;
 use aws_sdk_s3::operation::list_buckets::ListBucketsError;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
 use aws_sdk_s3::operation::put_object::PutObjectError;
+use derive_more::{Display, From};
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug, Display, From)]
+#[display("{self:?}")]
 pub enum Error {
+	#[from(String, &String, &str)]
+	Custom(String),
+
 	// -- Generic
-	#[error("Static error: {0}")]
 	Static(&'static str),
 
-	#[error("Generic error: {0}")]
-	Generic(String),
-
 	// -- Get
-	#[error("Cannot find S3 object at key '{key}'")]
+	#[display("Cannot find S3 object at key '{key}'")]
 	S3ObjectNotFound { key: String },
 
 	// -- Clean
-	#[error("Invalid clean url. Must be valid `local file path` and then `s3 url/base path` (was '{url_1}' and then '{url_2}`) ")]
+	#[display("Invalid clean url. Must be valid `local file path` and then `s3 url/base path` (was '{url_1}' and then '{url_2}`) ")]
 	CleanInvalidArguments { url_1: String, url_2: String },
 
 	// -- Uncategorized
-	#[error("Not a valid s3 url '{0}'. Should be format 's3://bucket_name[/path/to/object]'")]
+	#[display("Not a valid s3 url '{_0}'. Should be format 's3://bucket_name[/path/to/object]'")]
 	NotValidS3Url(String),
 
-	#[error("Credential environment variable {0} not found")]
+	#[display("Credential environment variable {_0} not found")]
 	NoCredentialEnv(String),
 
-	#[error("Credential profile config key {0} not found")]
+	#[display("Credential profile config key {_0} not found")]
 	NoCredentialConfig(String),
 
-	#[error("No credentials found for profile {0}.")]
+	#[display("No credentials found for profile {_0}.")]
 	NoCredentialsForProfile(String),
 
-	#[error(
+	#[display(
 		"No AWS environment variable found. Specify default 'AWS_ACCESS_KEY_ID', ... environments, or specify a valid --profile profile_name."
 	)]
 	NoDefaultEnvCredentialsFound,
 
-	#[error(
-		"No credential found for bucket '{0:?}'. Provide the following (by order of precedence): 
+	#[display(
+		"No credential found for bucket '{_0:?}'. Provide the following (by order of precedence): 
   - Provide bucket SS3_BUCKET_... environments (will take precendence on profile env/configs)
     - SS3_BUCKET_bucket_name_KEY_ID
     - SS3_BUCKET_bucket_name_KEY_SECRET
@@ -69,56 +70,74 @@ pub enum Error {
 	)]
 	NoCredentialsFoundForBucket(Option<String>),
 
-	#[error("Missing config. The credential environment variables or config must have either a REGION or ENDPOINT. Both absent.")]
+	#[display("Missing config. The credential environment variables or config must have either a REGION or ENDPOINT. Both absent.")]
 	MissingConfigMustHaveEndpointOrRegion,
 
-	#[error("Invalid command. Cause: {0}")]
+	#[display("Invalid command. Cause: {_0}")]
 	CmdInvalid(&'static str),
 
-	#[error("File path '{0}' not found.")]
+	#[display("File path '{_0}' not found.")]
 	FilePathNotFound(String),
 
-	#[error("Not Supported - '{0}' feature is not supported.")]
+	#[display("Not Supported - '{_0}' feature is not supported.")]
 	NotSupported(&'static str),
 
-	#[error("Not Supported yet - '{0}' feature is not supported yet")]
+	#[display("Not Supported yet - '{_0}' feature is not supported yet")]
 	NotSupportedYet(&'static str),
 
-	#[error("Cannot perform, invalid key '{0}'")]
+	#[display("Cannot perform, invalid key '{_0}'")]
 	InvalidPath(String),
 
-	#[error("Fail mode is on and the object '{0}' already exits")]
+	#[display("Fail mode is on and the object '{_0}' already exits")]
 	ObjectExistsOverFailMode(String),
 
-	#[error("Fail mode is on and the file '{0}' already exits")]
+	#[display("Fail mode is on and the file '{_0}' already exits")]
 	FileExistsOverFailMode(String),
 
-	#[error("This command is not valid. Cause: {0}")]
+	#[display("This command is not valid. Cause: {_0}")]
 	ComamndInvalid(&'static str),
 
 	// -- Utils
-	#[error(transparent)]
-	Md5(#[from] utils::md5::Error),
+	#[from]
+	Md5(utils::md5::Error),
 
 	// -- Externals
-	#[error(transparent)]
-	InvalidUri(#[from] http::uri::InvalidUri),
+	#[from]
+	InvalidUri(http::uri::InvalidUri),
 
-	#[error(transparent)]
-	SimpleFs(#[from] simple_fs::Error),
+	#[from]
+	SimpleFs(simple_fs::Error),
 
 	// aws_sdk_s3::primitives::ByteStreamError
-	#[error(transparent)]
-	ByteStream(#[from] aws_sdk_s3::primitives::ByteStreamError),
+	#[from]
+	ByteStream(aws_sdk_s3::primitives::ByteStreamError),
 
-	// #[error(transparent)]
-	#[error("AWS SDK ERROR:\n       Code: {code}\n    Message: {message}")]
+	#[display("AWS SDK ERROR:\n       Code: {code}\n    Message: {message}")]
 	AwsSdkErrorWrapper { code: String, message: String },
 
-	//
-	#[error(transparent)]
-	IO(#[from] std::io::Error),
+	#[from]
+	IO(std::io::Error),
 }
+
+// region:    --- Custom
+
+impl Error {
+	pub fn custom_from_err(err: impl std::error::Error) -> Self {
+		Self::Custom(err.to_string())
+	}
+
+	pub fn custom(val: impl Into<String>) -> Self {
+		Self::Custom(val.into())
+	}
+}
+
+// endregion: --- Custom
+
+// region:    --- Error Boilerplate
+
+impl std::error::Error for Error {}
+
+// endregion: --- Error Boilerplate
 
 macro_rules! impl_from_sdk_error {
 	($($ie:ident),*) => {
