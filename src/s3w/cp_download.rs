@@ -1,13 +1,13 @@
-use super::{compute_dst_path, compute_inex, get_file_name, path_type, Inex, ListOptions, ListResult, PathType, SBucket, SItem};
+use super::{Inex, ListOptions, ListResult, PathType, SBucket, SItem, compute_dst_path, compute_inex, get_file_name, path_type};
 use crate::{Error, Result};
 use aws_sdk_s3::primitives::ByteStream;
 use std::collections::{HashSet, VecDeque};
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::{BufWriter, Write};
 use std::ops::Deref;
 use std::path::Path;
 // use tokio_stream::StreamExt;
-use crate::s3w::support::{validate_over_for_file_dest, CpOptions};
+use crate::s3w::support::{CpOptions, validate_over_for_file_dest};
 
 /// "cp download" Implementation
 impl SBucket {
@@ -24,10 +24,10 @@ impl SBucket {
 				};
 
 				// create parent
-				if let Some(dst_dir) = dst_file.parent() {
-					if !dst_dir.exists() {
-						create_dir_all(dst_dir)?;
-					}
+				if let Some(dst_dir) = dst_file.parent()
+					&& !dst_dir.exists()
+				{
+					create_dir_all(dst_dir)?;
 				}
 				// perform the copy
 				self.download_file(base_key, &dst_file, &opts).await?;

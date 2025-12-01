@@ -135,14 +135,14 @@ pub fn list_s3_folder(s3_url: &str) -> Result<(usize, String)> {
 // Note: Personal best practice, "x" prefix to note that this is just private crate interface.
 
 pub trait XString {
-	fn x_lines(&self) -> Lines;
+	fn x_lines(&self) -> Lines<'_>;
 	fn x_has_line(&self, line: &str) -> bool;
 	fn x_file_name(&self) -> String;
 }
 
 impl XString for str {
 	/// Return the str::Lines but for the trimmed text (so no starting or ending empty lines)
-	fn x_lines(&self) -> Lines {
+	fn x_lines(&self) -> Lines<'_> {
 		self.trim().lines()
 	}
 	fn x_has_line(&self, line: &str) -> bool {
@@ -157,7 +157,7 @@ impl XString for str {
 
 impl XString for String {
 	/// Return the str::Lines but for the trimmed text (so no starting or ending empty lines)
-	fn x_lines(&self) -> Lines {
+	fn x_lines(&self) -> Lines<'_> {
 		str::x_lines(self)
 	}
 

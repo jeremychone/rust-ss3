@@ -58,14 +58,15 @@ impl SBucket {
 			panic!("CODE-ERROR - sbucket.upload_file should only get a file object. Code error.");
 		}
 
-		if let (Some(file_name), Some(ignore_set)) = (src_file.file_name().and_then(|f| f.to_str()), &self.default_ignore_upload_names) {
-			if ignore_set.contains(file_name) {
-				if opts.show_skip {
-					println!("{:13} {file_name}", "Skip (default)");
-				}
-
-				return Ok(());
+		if let Some(file_name) = src_file.file_name().and_then(|f| f.to_str())
+			&& let Some(ignore_set) = &self.default_ignore_upload_names
+			&& ignore_set.contains(file_name)
+		{
+			if opts.show_skip {
+				println!("{:13} {file_name}", "Skip (default)");
 			}
+
+			return Ok(());
 		}
 
 		if let Some(src_file_str) = src_file.to_str() {

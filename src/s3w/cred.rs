@@ -200,20 +200,20 @@ async fn load_aws_cred_from_ss3_profile_env(profile: &str) -> Result<AwsCred> {
 async fn load_aws_cred_from_aws_profile_configs(profile_str: &str) -> Result<AwsCred> {
 	let (fs, ev) = (Fs::real(), Env::default());
 	let profiles = aws_config::profile::load(&fs, &ev, &EnvConfigFiles::default(), None).await;
-	if let Ok(profiles) = profiles {
-		if let Some(profile) = profiles.get_profile(profile_str) {
-			let key_id = get_profile_value(profile, "aws_access_key_id")?;
-			let key_secret = get_profile_value(profile, "aws_secret_access_key")?;
-			let region = get_profile_value(profile, "region").ok();
-			let endpoint = get_profile_value(profile, "endpoint").ok();
+	if let Ok(profiles) = profiles
+		&& let Some(profile) = profiles.get_profile(profile_str)
+	{
+		let key_id = get_profile_value(profile, "aws_access_key_id")?;
+		let key_secret = get_profile_value(profile, "aws_secret_access_key")?;
+		let region = get_profile_value(profile, "region").ok();
+		let endpoint = get_profile_value(profile, "endpoint").ok();
 
-			return Ok(AwsCred {
-				key_id,
-				key_secret,
-				region,
-				endpoint, // because aws configs only
-			});
-		}
+		return Ok(AwsCred {
+			key_id,
+			key_secret,
+			region,
+			endpoint, // because aws configs only
+		});
 	}
 
 	Err(Error::NoCredentialsForProfile(profile_str.to_string()))

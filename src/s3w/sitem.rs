@@ -9,6 +9,7 @@ pub enum SItemType {
 
 #[derive(Debug)]
 pub struct SItem {
+	#[allow(unused)]
 	pub typ: SItemType,
 	pub key: String,
 	pub etag: Option<String>,

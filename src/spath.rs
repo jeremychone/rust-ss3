@@ -61,16 +61,16 @@ impl S3Url {
 			.captures(url)
 			.map(|caps| caps.iter().filter_map(|cap| cap.map(|cap| cap.as_str())).collect::<Vec<_>>());
 
-		if let Some(caps) = caps {
-			if caps.len() == 3 {
-				return Ok(S3Url {
-					bucket: caps[1].to_string(),
-					key: {
-						let prefix = caps[2];
-						prefix.strip_prefix('/').unwrap_or(prefix).to_string()
-					},
-				});
-			}
+		if let Some(caps) = caps
+			&& caps.len() == 3
+		{
+			return Ok(S3Url {
+				bucket: caps[1].to_string(),
+				key: {
+					let prefix = caps[2];
+					prefix.strip_prefix('/').unwrap_or(prefix).to_string()
+				},
+			});
 		}
 
 		Err(Error::NotValidS3Url(url.to_string()))

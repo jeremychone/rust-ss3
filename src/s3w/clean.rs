@@ -20,7 +20,8 @@ impl SBucket {
 		let sitems = self.list(base_s3_path, &ListOptions::new(true)).await?.objects;
 
 		// -- List files and target s3 keys Set
-		let files = list_files(local_path, Some(&["**/*"]), Some(DEFAULT_UPLOAD_IGNORE_GLOBS))?;
+		let fs_options = simple_fs::ListOptions::new(Some(DEFAULT_UPLOAD_IGNORE_GLOBS));
+		let files = list_files(local_path, Some(&["**/*"]), Some(fs_options))?;
 		// the target s3 keys from the files
 		let target_key_set: HashSet<String> = files
 			.iter()
