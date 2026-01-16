@@ -32,8 +32,8 @@ pathdiff = "0.2"
 walkdir = "2"
 mime_guess = "2"
 file-size = "1"
-simple-fs = "0.8.1"
-# -- Aws 
+simple-fs = "0.9"
+# -- Aws
 aws-config = "1.4"
 aws-runtime = "1.2"
 aws-sdk-s3 = "1.28"
@@ -44,7 +44,7 @@ md5 = "0.8" # for aws etag
 derive_more = { version = "2", features = ["from", "display"] }
 regex = "1"
 globset = "0.4"
-http = "1.1" 
+http = "1.1"
 strum = { version = "0.27", features = ["derive"] }
 
 [dev-dependencies]
