@@ -104,6 +104,7 @@ pub fn client_from_cred(aws_cred: AwsCred) -> Result<Client> {
 		builder = builder.region(Region::new(region));
 	}
 
+	builder = builder.force_path_style(true);
 	let config = builder.build();
 	let client = Client::from_conf(config);
 	Ok(client)
