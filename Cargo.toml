@@ -1,6 +1,6 @@
 [package]
 name = "ss3"
-version = "0.2.0-rc.2-WIP"
+version = "0.2.0"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
